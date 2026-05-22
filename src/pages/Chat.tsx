@@ -100,6 +100,22 @@ export default function Chat() {
     }
   }, [messages]);
 
+  const recognitionRef = useRef<any>(null);
+
+  // Listen to mobile virtual keyboard viewport changes
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const handleViewportResize = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    window.visualViewport.addEventListener('resize', handleViewportResize);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportResize);
+    };
+  }, []);
+
   const handleSetNickname = async () => {
     if (!user || !friendId || !nicknameTarget) return;
     const chatId = [user.uid, friendId].sort().join('_');
@@ -123,20 +139,89 @@ export default function Chat() {
   };
 
   const startListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error("Speech recognition not supported.");
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsListening(false);
       return;
     }
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error("Speech recognition not supported in this browser.");
+      return;
+    }
+
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognitionRef.current = recognition;
+
     recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onerror = (e: any) => {
+      console.error('Speech recognition error:', e);
+      setIsListening(false);
+      recognitionRef.current = null;
+      if (e.error === 'not-allowed') {
+        toast.error("Microphone access denied. Please check your browser's microphone permissions.");
+      } else {
+        toast.error(`Speech recognition failed: ${e.error || 'Unknown error'}`);
+      }
+    };
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setNewMessage(prev => prev + (prev ? ' ' : '') + transcript);
     };
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
+
+  const attemptCopyText = (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => toast.success('Copied to clipboard'))
+        .catch(() => fallbackCopyText(text));
+    } else {
+      fallbackCopyText(text);
+    }
+  };
+
+  const fallbackCopyText = (text: string) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (successful) {
+        toast.success('Copied to clipboard');
+      } else {
+        toast.error('Failed to copy text');
+      }
+    } catch (err) {
+      toast.error('Browser copy failed');
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,6 +265,7 @@ export default function Chat() {
         participants: [user.uid, friendId],  
         lastMessage: currentAttachment ? `[${currentAttachment.type}]` : messageText,  
         lastMessageAt: serverTimestamp(),  
+        lastMessageSenderId: user.uid,
         updatedAt: serverTimestamp()  
       }, { merge: true });  
 
@@ -239,13 +325,38 @@ export default function Chat() {
   const handleDownload = async (dataUrl: string, filename: string, id: string) => {
     setDownloadingId(id);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
+      let finalUrl = dataUrl;
+      let createdBlobUrl = '';
+      
+      // If it is a base64 encoded dataUrl, convert to Blob to prevent Chrome/Safari sandboxing block
+      if (dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || '';
+        const rawBase64 = parts[1];
+        const binaryStr = atob(rawBase64);
+        const binaryLen = binaryStr.length;
+        const bytes = new Uint8Array(binaryLen);
+        for (let i = 0; i < binaryLen; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mime });
+        createdBlobUrl = URL.createObjectURL(blob);
+        finalUrl = createdBlobUrl;
+      }
+
       const a = document.createElement('a');
-      a.href = dataUrl;
+      a.href = finalUrl;
       a.download = filename || 'download';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
+      if (createdBlobUrl) {
+        setTimeout(() => URL.revokeObjectURL(createdBlobUrl), 10000);
+      }
+
       setDownloadedIds(prev => new Set(prev).add(id));
       setTimeout(() => setDownloadedIds(prev => {
         const next = new Set(prev);
@@ -253,7 +364,12 @@ export default function Chat() {
         return next;
       }), 2000);
     } catch (error) {
-      toast.error('Download failed');
+      // Cross-origin or browser sandbox fallback
+      try {
+        window.open(dataUrl, '_blank');
+      } catch (e) {
+        toast.error('Download restricted by browser sandboxing');
+      }
     } finally {
       setDownloadingId(null);
     }
@@ -318,7 +434,7 @@ export default function Chat() {
               </div>  
               <div className="flex flex-col">  
                 <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">  
-                  {nicknames[friendId!] || friendProfile.name}  
+                  {nicknames[friendId!] || friendProfile.name || friendProfile.username}  
                 </h2>  
                 <div className="flex items-center gap-1.5 mt-0.5">  
                   <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>  
@@ -416,6 +532,7 @@ export default function Chat() {
 
                       <div   
                         className={`relative group select-none ${isMe ? `bg-orange-500 text-white shadow-sm ${bubbleShape}` : `bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm border border-gray-100 dark:border-gray-700 ${bubbleShape}`} ${(!msg.text && msg.attachment && msg.attachment.type !== 'file') ? 'p-1 bg-transparent border-none shadow-none' : 'px-4 py-2.5'}`}  
+                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
                         onContextMenu={(e) => handleContextMenu(e, msg)}  
                       >  
                         {msg.replyTo && (  
@@ -682,7 +799,7 @@ export default function Chat() {
               className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 py-1.5 min-w-[160px] overflow-hidden"  
             >  
               {contextMenu.msg.text && (  
-                <button onClick={() => {navigator.clipboard.writeText(contextMenu.msg.text); toast.success('Copied to clipboard'); setContextMenu(null);}} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">  
+                <button onClick={() => {attemptCopyText(contextMenu.msg.text); setContextMenu(null);}} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">  
                   <Copy className="w-4 h-4 text-gray-400" /> Copy  
                 </button>  
               )}  

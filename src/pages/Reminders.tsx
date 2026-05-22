@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, orderBy, updateDoc, getDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { Bell, Plus, Trash2, X, Clock, Calendar, Activity, Smartphone } from 'lucide-react';
+import { Bell, Plus, Trash2, X, Clock, Calendar, Activity, Smartphone, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -14,8 +14,34 @@ export default function Reminders() {
   const [newTitle, setNewTitle] = useState('');
   const [newTime, setNewTime] = useState('');
   const [newDays, setNewDays] = useState<number[]>([]); // 0-6 for Sun-Sat
+  const [friends, setFriends] = useState<any[]>([]);
+  const [selectedFriendId, setSelectedFriendId] = useState('');
+  const [reminderMessage, setReminderMessage] = useState('');
 
   const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  // Fetch Friends List
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, `users/${user.uid}/friends`));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const friendIds = snapshot.docs.map(d => d.id);
+      if (friendIds.length === 0) {
+        setFriends([]);
+        return;
+      }
+      try {
+        const profiles = await Promise.all(friendIds.map(async (id) => {
+          const profileDoc = await getDoc(doc(db, 'publicProfiles', id));
+          return { id, ...profileDoc.data() };
+        }));
+        setFriends(profiles);
+      } catch (error) {
+        console.error("Error fetching friend profiles:", error);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -45,12 +71,16 @@ export default function Reminders() {
         days: newDays,
         enabled: true,
         createdAt: serverTimestamp(),
-        lastNotified: null
+        lastNotified: null,
+        friendId: null,
+        messageText: null
       });
       setShowAddModal(false);
       setNewTitle('');
       setNewTime('');
       setNewDays([]);
+      setSelectedFriendId('');
+      setReminderMessage('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/reminders`);
     }
@@ -92,7 +122,7 @@ export default function Reminders() {
   const handleClearAll = async () => {
     if (!user || reminders.length === 0) return;
     
-    toast('Clear all reminders?', {
+    toast.info('Clear all reminders?', {
       action: {
         label: 'Clear All',
         onClick: async () => {
@@ -162,14 +192,15 @@ export default function Reminders() {
       setPermissionState(permission);
       
       if (permission === "granted") {
-        const title = "⏰ NEURIX System Ready";
+        const title = "✦ NEURIX AI";
         const options = { 
-          body: "NEURIX: Alerts are active",
-          icon: 'https://picsum.photos/seed/neurix/192/192',
-          badge: 'https://picsum.photos/seed/neurix/192/192',
-          vibrate: [200, 100, 200],
+          body: "✦ Scheduled: System automated reminders are fully operational.",
+          icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
+          badge: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
+          vibrate: [200, 100, 200, 100, 300],
           timestamp: Date.now(),
-          requireInteraction: true
+          requireInteraction: true,
+          data: { url: '/reminders' }
         };
 
         try {
@@ -297,7 +328,7 @@ export default function Reminders() {
                 </button>
                 <button 
                   onClick={() => handleDelete(reminder.id)}
-                  className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/40"
+                  className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>

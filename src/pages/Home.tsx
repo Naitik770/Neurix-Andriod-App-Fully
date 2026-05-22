@@ -473,9 +473,12 @@ export default function Home() {
             <Users className="w-5 h-5" />
             {/* TODO: Add notification badge logic here */}
           </Link>
-          <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm transition-colors duration-300">
+          <Link 
+            to="/profile"
+            className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm transition-colors duration-300 block hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+          >
             <img src={getAvatarUrl(profile, user)} alt="Avatar" className="w-full h-full object-cover" />
-          </div>
+          </Link>
         </div>
       </header>
 
@@ -588,81 +591,110 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          habits.slice(0, 5).map((habit) => (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              key={habit.id} 
-              className="bg-white dark:bg-gray-800 rounded-3xl p-5 flex items-center gap-4 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group border border-transparent dark:border-gray-700 overflow-hidden"
-            >
-              <ParticleBurst active={habit.lastCompleted === new Date().toISOString().split('T')[0]} />
-              
-              <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleComplete(habit.id)}
-                disabled={habit.lastCompleted === new Date().toISOString().split('T')[0]}
-                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center bg-white dark:bg-gray-800 transition-all shrink-0 relative z-10 ${habit.lastCompleted === new Date().toISOString().split('T')[0] ? 'border-orange-500 bg-orange-500 text-white cursor-not-allowed' : 'border-gray-200 dark:border-gray-600 text-transparent hover:border-orange-400 dark:hover:border-orange-500'}`}
+          habits.slice(0, 5).map((habit) => {
+            const isCompleted = habit.lastCompleted === new Date().toISOString().split('T')[0];
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={habit.id} 
+                className={`bg-white dark:bg-gray-900 rounded-3xl p-5 flex items-center justify-between gap-4 border transition-all duration-300 relative group shadow-sm ${
+                  isCompleted 
+                    ? 'border-orange-100/30 dark:border-orange-950/10 bg-orange-500/[0.01]' 
+                    : 'border-gray-100 dark:border-gray-800/30 hover:border-orange-100 dark:hover:border-orange-900/30'
+                }`}
               >
-                <motion.div
-                  initial={false}
-                  animate={{ 
-                    scale: habit.lastCompleted === new Date().toISOString().split('T')[0] ? 1 : 0,
-                    opacity: habit.lastCompleted === new Date().toISOString().split('T')[0] ? 1 : 0
-                  }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                >
-                  <Check className="w-5 h-5 stroke-[3]" />
-                </motion.div>
-              </motion.button>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner relative z-10 ${habit.bg || 'bg-gray-100 dark:bg-gray-700'} ${habit.color || 'text-gray-500 dark:text-gray-400'}`}>
-                {getIcon(habit.icon)}
-              </div>
-              <div className="flex-1 min-w-0 pr-2 relative z-10">
-                <h3 className={`text-gray-900 dark:text-white font-bold truncate text-lg tracking-tight ${habit.lastCompleted === new Date().toISOString().split('T')[0] ? 'opacity-40 line-through' : ''}`}>{habit.title}</h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Streak</span>
-                  <span className="text-xs font-bold text-orange-500">{habit.streak}d</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 relative z-10">
-                {habit.lastCompleted === new Date().toISOString().split('T')[0] && (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center"
+                <ParticleBurst active={isCompleted} />
+                
+                <div className="flex items-center gap-3.5 flex-1 min-w-0 relative z-10">
+                  {/* Sleek Minimal Checkbox */}
+                  <button 
+                    onClick={() => handleComplete(habit.id)}
+                    disabled={isCompleted}
+                    className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all shrink-0 ${
+                      isCompleted 
+                        ? 'border-orange-500 bg-orange-500 text-white shadow-sm' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-orange-500 bg-gray-50/55 dark:bg-gray-800/40 cursor-pointer'
+                    }`}
                   >
-                    <Flame className="w-5 h-5 text-orange-500 fill-current" />
-                  </motion.div>
-                )}
-                {habit.durationMins && habit.lastCompleted !== new Date().toISOString().split('T')[0] && (
-                  <motion.button 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => startFocusMode(habit)}
-                    className="flex flex-col items-center justify-center gap-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl shadow-lg transition-all shrink-0 group/focus"
-                  >
-                    <Play className="w-5 h-5 fill-current ml-0.5 group-hover/focus:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black">{habit.durationMins}M</span>
-                  </motion.button>
-                )}
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => openEditModal(habit)}
-                    className="p-2 text-gray-300 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-all"
-                  >
-                    <Edit2 className="w-4 h-4" />
+                    <AnimatePresence>
+                      {isCompleted && (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -45 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0 }}
+                        >
+                          <Check className="w-4 h-4 text-white stroke-[3.5]" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </button>
-                  <button
-                    onClick={() => handleDeleteTask(habit.id)}
-                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  {/* Compact Elegant Icon frame */}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isCompleted
+                      ? 'bg-gray-100/60 dark:bg-gray-800/40 text-gray-400'
+                      : (habit.bg || 'bg-orange-50 dark:bg-orange-950/20') + ' ' + (habit.color || 'text-orange-500')
+                  }`}>
+                    {getIcon(habit.icon)}
+                  </div>
+
+                  {/* Title & Stats */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-bold text-sm tracking-tight transition-all duration-300 ${
+                      isCompleted 
+                        ? 'text-gray-400 dark:text-gray-500 line-through' 
+                        : 'text-gray-900 dark:text-white group-hover:text-orange-655'
+                    }`}>
+                      {habit.title}
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/5 px-2 py-0.5 rounded-md">
+                        <Flame className="w-3 h-3 mr-0.5 fill-orange-500 text-orange-500" />
+                        {habit.streak || 0}d
+                      </span>
+                      {habit.durationMins && (
+                        <span className="inline-flex items-center text-[10px] font-medium text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+                          <Clock className="w-3 h-3 mr-0.5 text-gray-450" />
+                          {habit.durationMins}m
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-orange-500 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-md">
+                          Satisfied
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))
+
+                {/* Single Context-Sensitive Action Button */}
+                <div className="flex items-center gap-2 relative z-10 shrink-0">
+                  {habit.durationMins && !isCompleted ? (
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => startFocusMode(habit)}
+                      className="px-3.5 py-1.5 bg-gray-900 hover:bg-black dark:bg-gray-800 dark:hover:bg-gray-700 text-white dark:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm shrink-0 cursor-pointer"
+                    >
+                      <Play className="w-3 h-3 fill-white text-white stroke-none" />
+                      <span>Start</span>
+                    </motion.button>
+                  ) : (
+                    !isCompleted && (
+                      <button 
+                        onClick={() => handleComplete(habit.id)}
+                        className="p-1 px-2.5 bg-orange-50 dark:bg-orange-955/20 text-orange-600 dark:text-orange-400 hover:bg-orange-105 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                      >
+                        Complete
+                      </button>
+                    )
+                  )}
+                </div>
+              </motion.div>
+            );
+          })
         )}
       </div>
 

@@ -115,6 +115,32 @@
         }
       } catch (e) {}
     })();
+
+    // PWA Prompt Listener & Early Service Worker Registration
+    (function() {
+      window.pwaDeferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.pwaDeferredPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-installable'));
+      });
+      window.addEventListener('appinstalled', function() {
+        window.pwaDeferredPrompt = null;
+        window.dispatchEvent(new CustomEvent('pwa-installed'));
+      });
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(reg) {
+              console.log('SW Registered on load:', reg.scope);
+            })
+            .catch(function(err) {
+              console.error('SW Registration failed on load:', err);
+            });
+        });
+      }
+    })();
   </script>
 </head>
   <body>
