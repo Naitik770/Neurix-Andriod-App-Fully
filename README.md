@@ -1,11 +1,36 @@
-<div align="center">
+# 🧠 NEURIX App
+**Master your habits. Train your mind.**
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+NEURIX is a cutting-edge habit-building and cognitive training application designed to help users reach peak mental performance through AI-driven insights and real-time tracking.
 
-  <h1>Built with AI Studio</h2>
+---
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## ✨ Features
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+* **⚡ AI-Powered Insights:** Personalized responses and habit analysis using the **Gemini API**.
+* **🔥 Real-time Data:** Seamless data synchronization powered by **Firebase Firestore**.
+* **🌐 High Performance:** Ultra-fast frontend experience built with **Vite**.
+* **🔐 Enterprise-Grade Security:** Robust environment configuration to keep your keys safe.
+* **🧩 Scalable Core:** Clean, modular architecture designed for growth.
 
-</div>
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | TypeScript / Vite |
+| **Artificial Intelligence** | Google Gemini API |
+| **Backend/Database** | Firebase Firestore |
+
+---
+
+## 📦 Getting Started
+
+### 1. Installation
+Clone the repository and install the necessary dependencies:
+
+```bash
+git clone [https://github.com/Naitik770/NEURIX-APP.git](https://github.com/Naitik770/NEURIX-APP.git)
+cd NEURIX-APP
+npm install

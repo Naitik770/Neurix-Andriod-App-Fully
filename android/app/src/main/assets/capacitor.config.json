@@ -1,0 +1,6 @@
+{
+	"appId": "com.neurix.app",
+	"appName": "NEURIX AI",
+	"webDir": "dist",
+	"bundledWebRuntime": false
+}
