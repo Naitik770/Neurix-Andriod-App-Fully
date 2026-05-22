@@ -11,8 +11,48 @@ export default function Messages() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add'>('friends');
-  const [friends, setFriends] = useState<any[]>([]);
-  const [chats, setChats] = useState<{ [key: string]: any }>({});
+  const [friends, setFriends] = useState<any[]>(() => {
+    try {
+      const activeUid = sessionStorage.getItem('neurix_active_uid');
+      if (activeUid) {
+        const cached = sessionStorage.getItem(`neurix_friends_${activeUid}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [chats, setChats] = useState<{ [key: string]: any }>(() => {
+    try {
+      const activeUid = sessionStorage.getItem('neurix_active_uid');
+      if (activeUid) {
+        const cached = sessionStorage.getItem(`neurix_chats_${activeUid}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return {};
+  });
+
+  const restoredUidRef = useRef<string | null>(null);
+
+  // Keep track of active user ID and restore their cache instantly upon detection
+  useEffect(() => {
+    if (user?.uid && restoredUidRef.current !== user.uid) {
+      try {
+        sessionStorage.setItem('neurix_active_uid', user.uid);
+        const cachedFriends = sessionStorage.getItem(`neurix_friends_${user.uid}`);
+        if (cachedFriends) {
+          setFriends(JSON.parse(cachedFriends));
+        }
+        const cachedChats = sessionStorage.getItem(`neurix_chats_${user.uid}`);
+        if (cachedChats) {
+          setChats(JSON.parse(cachedChats));
+        }
+        restoredUidRef.current = user.uid;
+      } catch (e) {
+        console.warn("Restoring active user cache failed:", e);
+      }
+    }
+  }, [user?.uid]);
   const [friendsSearchQuery, setFriendsSearchQuery] = useState('');
   const [requests, setRequests] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,47 +91,102 @@ export default function Messages() {
 
   // Fetch Friends
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
     const q = query(collection(db, `users/${user.uid}/friends`));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const friendIds = snapshot.docs.map(d => d.id);
       if (friendIds.length === 0) {
         setFriends([]);
         return;
       }
 
-      // Fetch profiles for all friends
+      // 1. Prepare initial list instantly using cache + fallback placeholders
+      const initialProfiles = friendIds.map((id) => {
+        const cached = sessionStorage.getItem(`neurix_profile_persist_${id}`);
+        if (cached) {
+          try {
+            return { id, ...JSON.parse(cached) };
+          } catch (e) {}
+        }
+        return { id, username: "loading", name: "Friend", isOnline: false };
+      });
+      
+      setFriends(initialProfiles);
       try {
-        const profiles = await Promise.all(friendIds.map(async (id) => {
-          const profileDoc = await getDoc(doc(db, 'publicProfiles', id));
-          return { id, ...profileDoc.data() };
-        }));
-        setFriends(profiles);
-      } catch (error) {
-        console.error("Error fetching friend profiles:", error);
-      }
+        sessionStorage.setItem(`neurix_friends_${user.uid}`, JSON.stringify(initialProfiles));
+      } catch (e) {}
+
+      // 2. Fetch missing or updated profiles asynchronously in the background
+      friendIds.forEach((id) => {
+        getDoc(doc(db, 'publicProfiles', id)).then((profileDoc) => {
+          if (profileDoc.exists()) {
+            const pData = profileDoc.data();
+            try {
+              sessionStorage.setItem(`neurix_profile_persist_${id}`, JSON.stringify(pData));
+            } catch (err) {}
+            
+            // Incrementally update our state as soon as this profile arrives
+            setFriends((prevFriends) => {
+              const updated = prevFriends.map(f => f.id === id ? { id, ...pData } : f);
+              try {
+                sessionStorage.setItem(`neurix_friends_${user.uid}`, JSON.stringify(updated));
+              } catch (e) {}
+              return updated;
+            });
+          }
+        }).catch((err) => {
+          console.warn(`Error background loading profile ${id}:`, err);
+        });
+      });
     }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/friends`));
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid]);
 
   // Fetch Friend Requests
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
     const q = query(collection(db, `users/${user.uid}/friendRequests`));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const reqsData = await Promise.all(snapshot.docs.map(async (d) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const initialReqs = snapshot.docs.map((d) => {
         const reqData = d.data();
-        const senderDoc = await getDoc(doc(db, 'publicProfiles', reqData.fromUid));
-        return { id: d.id, ...reqData, senderProfile: senderDoc.data() };
-      }));
-      setRequests(reqsData);
+        const fromUid = reqData.fromUid;
+        let sProfile = null;
+        const cached = sessionStorage.getItem(`neurix_profile_persist_${fromUid}`);
+        if (cached) {
+          try {
+            sProfile = JSON.parse(cached);
+          } catch (e) {}
+        }
+        return { id: d.id, ...reqData, senderProfile: sProfile || { id: fromUid, name: "User", username: "loading" } };
+      });
+
+      setRequests(initialReqs);
+
+      // Background update request profiles
+      snapshot.docs.forEach((d) => {
+        const reqData = d.data();
+        const fromUid = reqData.fromUid;
+        getDoc(doc(db, 'publicProfiles', fromUid)).then((senderDoc) => {
+          if (senderDoc.exists()) {
+            const sProfile = senderDoc.data();
+            try {
+              sessionStorage.setItem(`neurix_profile_persist_${fromUid}`, JSON.stringify(sProfile));
+            } catch (err) {}
+            setRequests((prevReqs) => 
+              prevReqs.map(r => r.fromUid === fromUid ? { ...r, senderProfile: sProfile } : r)
+            );
+          }
+        }).catch(err => {
+          console.warn("Background request profile fetch failed", err);
+        });
+      });
     }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/friendRequests`));
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid]);
 
   // Fetch user chats (for last messages, pinning, hiding and nicknames)
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
     const q = query(
       collection(db, 'chats'),
       where('participants', 'array-contains', user.uid)
@@ -102,11 +197,14 @@ export default function Messages() {
         chatsMap[d.id] = d.data();
       });
       setChats(chatsMap);
+      try {
+        sessionStorage.setItem(`neurix_chats_${user.uid}`, JSON.stringify(chatsMap));
+      } catch (e) {}
     }, (error) => {
       console.error("Error fetching chats metadata:", error);
     });
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid]);
 
   // Incremental Search
   useEffect(() => {
@@ -493,7 +591,7 @@ export default function Messages() {
 
   const formatLastMsgTime = (timestamp: any) => {
     if (!timestamp) return '';
-    const date = timestamp.toMillis ? new Date(timestamp.toMillis()) : (timestamp.seconds ? new Date(timestamp.seconds * 1000) : null);
+    const date = timestamp.toMillis ? new Date(timestamp.toMillis()) : (timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date());
     if (!date) return '';
     const today = new Date();
     if (date.toDateString() === today.toDateString()) {
@@ -530,8 +628,12 @@ export default function Messages() {
         return pinB - pinA;
       }
 
-      const timeA = chatA?.lastMessageAt ? (chatA.lastMessageAt.toMillis ? chatA.lastMessageAt.toMillis() : (chatA.lastMessageAt.seconds ? chatA.lastMessageAt.seconds * 1000 : 0)) : 0;
-      const timeB = chatB?.lastMessageAt ? (chatB.lastMessageAt.toMillis ? chatB.lastMessageAt.toMillis() : (chatB.lastMessageAt.seconds ? chatB.lastMessageAt.seconds * 1000 : 0)) : 0;
+      const timeA = chatA?.lastMessageAt 
+        ? (chatA.lastMessageAt.toMillis ? chatA.lastMessageAt.toMillis() : (chatA.lastMessageAt.seconds ? chatA.lastMessageAt.seconds * 1000 : Date.now())) 
+        : (chatA?.lastMessage ? Date.now() : 0);
+      const timeB = chatB?.lastMessageAt 
+        ? (chatB.lastMessageAt.toMillis ? chatB.lastMessageAt.toMillis() : (chatB.lastMessageAt.seconds ? chatB.lastMessageAt.seconds * 1000 : Date.now())) 
+        : (chatB?.lastMessage ? Date.now() : 0);
       
       if (timeA !== timeB) return timeB - timeA;
 
@@ -666,11 +768,38 @@ export default function Messages() {
                             )}
                           </div>
                           
-                          {lastMsg ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5 max-w-[100%] leading-relaxed">
-                              {lastMsg}
-                            </p>
-                          ) : (
+                          {lastMsg ? (() => {
+                            const unreadCount = chatData?.unreadCount?.[user.uid] || 0;
+                            const isUnread = unreadCount > 0;
+                            
+                            // Truncate at around 15-19 words (using 17 words)
+                            const words = lastMsg.split(/\s+/);
+                            const isTruncated = words.length > 17;
+                            const truncatedText = isTruncated ? words.slice(0, 17).join(' ') + '...' : lastMsg;
+
+                            let displayMsg = '';
+                            if (isUnread) {
+                              if (unreadCount === 1) {
+                                displayMsg = truncatedText;
+                              } else if (unreadCount > 1 && unreadCount <= 4) {
+                                displayMsg = `${unreadCount} new messages`;
+                              } else {
+                                displayMsg = `4+ new messages`;
+                              }
+                            } else {
+                              displayMsg = truncatedText;
+                            }
+
+                            return (
+                              <p className={`text-xs mt-0.5 max-w-[100%] leading-relaxed ${
+                                isUnread 
+                                  ? 'font-bold text-gray-900 dark:text-white' 
+                                  : 'font-medium text-gray-500 dark:text-gray-400'
+                              }`}>
+                                {displayMsg}
+                              </p>
+                            );
+                          })() : (
                             <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5 font-medium">@{friend.username}</p>
                           )}
                         </div>
@@ -684,6 +813,14 @@ export default function Messages() {
                               {formatLastMsgTime(lastMsgTime)}
                             </span>
                           )}
+                          {(() => {
+                            const unreadCount = chatData?.unreadCount?.[user.uid] || 0;
+                            return unreadCount > 0 ? (
+                              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-extrabold text-white shadow-sm ring-2 ring-white dark:ring-gray-800 animate-pulse">
+                                {unreadCount}
+                              </span>
+                            ) : null;
+                          })()}
                           <div className="flex items-center gap-1">
                             {/* Tap here for instant Options Trigger (Accessible fallback for all browser habits) */}
                             <button 

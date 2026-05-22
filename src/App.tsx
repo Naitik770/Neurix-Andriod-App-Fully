@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import React, { useEffect, useState, createContext, useContext, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, onSnapshot, updateDoc, where, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, onSnapshot, updateDoc, where, addDoc, increment } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BottomNav } from './components/BottomNav';
@@ -647,6 +647,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
                   lastMessage: reminder.messageText,
                   lastMessageAt: serverTimestamp(),
                   lastMessageSenderId: user.uid,
+                  [`unreadCount.${reminder.friendId}`]: increment(1),
+                  [`unreadCount.${user.uid}`]: 0,
                   participants: [user.uid, reminder.friendId].sort()
                 }, { merge: true });
                 

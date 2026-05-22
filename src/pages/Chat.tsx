@@ -2,21 +2,95 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, getAvatarUrl } from '../App';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, onSnapshot, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, increment } from 'firebase/firestore';
 import { ArrowLeft, Send, Paperclip, X, Edit2, Trash2, Image as ImageIcon, FileText, Check, FileVideo, Download, Play, CornerUpLeft, ExternalLink, Loader2, Copy, Mic, MoreVertical, User, Pencil } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+
+// Module-scoped caches for ultra-fast, zero-delay chat loading
+const chatMessagesCache: { [chatId: string]: any[] } = {};
+const friendProfileCache: { [friendId: string]: any } = {};
+
+// Helper to serialize & persist chat messages without massive media bloating
+const saveChatToStorage = (chatId: string, msgs: any[]) => {
+  try {
+    const subset = msgs.slice(-40).map(m => {
+      const copy = { ...m };
+      if (copy.createdAt instanceof Date) {
+        copy.createdAtTime = copy.createdAt.getTime();
+      } else if (copy.createdAt && typeof copy.createdAt.toDate === 'function') {
+        copy.createdAtTime = copy.createdAt.toDate().getTime();
+      } else if (copy.createdAt && copy.createdAt.seconds) {
+        copy.createdAtTime = copy.createdAt.seconds * 1000;
+      } else if (copy.createdAt) {
+        copy.createdAtTime = new Date(copy.createdAt).getTime();
+      }
+      
+      // Strip heavy base64 data to prevent exceeding sessionStorage/localStorage quotas
+      if (copy.attachment && copy.attachment.data && copy.attachment.data.length > 2000) {
+        copy.attachment = {
+          ...copy.attachment,
+          data: "" // Clear base64 payload but preserve structure
+        };
+      }
+      return copy;
+    });
+    sessionStorage.setItem(`neurix_chat_persist_${chatId}`, JSON.stringify(subset));
+  } catch (err) {
+    console.warn("Storage sync failed:", err);
+  }
+};
+
+const loadChatFromStorage = (chatId: string): any[] => {
+  try {
+    const raw = sessionStorage.getItem(`neurix_chat_persist_${chatId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed.map((m: any) => ({
+      ...m,
+      createdAt: m.createdAtTime ? new Date(m.createdAtTime) : new Date()
+    }));
+  } catch (err) {
+    return [];
+  }
+};
+
+const saveProfileToStorage = (friendId: string, profile: any) => {
+  try {
+    sessionStorage.setItem(`neurix_profile_persist_${friendId}`, JSON.stringify(profile));
+  } catch (err) {}
+};
+
+const loadProfileFromStorage = (friendId: string): any => {
+  try {
+    const raw = sessionStorage.getItem(`neurix_profile_persist_${friendId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+};
 
 export default function Chat() {
   const { friendId } = useParams<{ friendId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [friendProfile, setFriendProfile] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const chatId = (user && friendId) ? [user.uid, friendId].sort().join('_') : '';
+
+  const [friendProfile, setFriendProfile] = useState<any>(() => {
+    if (!friendId) return null;
+    return friendProfileCache[friendId] || loadProfileFromStorage(friendId) || null;
+  });
+
+  const [messages, setMessages] = useState<any[]>(() => {
+    if (!chatId) return [];
+    return chatMessagesCache[chatId] || loadChatFromStorage(chatId) || [];
+  });
+
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<{ type: string, data: string, name: string } | null>(null);
@@ -59,7 +133,10 @@ export default function Chat() {
         const docRef = doc(db, 'publicProfiles', friendId);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
-            setFriendProfile(docSnap.data());
+            const data = docSnap.data();
+            friendProfileCache[friendId] = data;
+            saveProfileToStorage(friendId, data);
+            setFriendProfile(data);
           }
           setLoading(false);
         });
@@ -82,11 +159,15 @@ export default function Chat() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {  
-      setMessages(snapshot.docs.map(doc => ({  
+      const newMsgs = snapshot.docs.map(doc => ({  
         id: doc.id,  
         ...doc.data(),  
         createdAt: doc.data().createdAt?.toDate() || new Date()  
-      })));  
+      }));  
+      chatMessagesCache[chatId] = newMsgs;
+      saveChatToStorage(chatId, newMsgs);
+      setMessages(newMsgs);
+      setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, `chats/${chatId}/messages`));  
 
     return () => unsubscribe();
@@ -99,6 +180,18 @@ export default function Chat() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Clear own unreadCount when active in chat or messages update
+  useEffect(() => {
+    if (!user || !friendId) return;
+    const chatId = [user.uid, friendId].sort().join('_');
+    const chatRef = doc(db, 'chats', chatId);
+    updateDoc(chatRef, {
+      [`unreadCount.${user.uid}`]: 0
+    }).catch((err) => {
+      // Soft fail if document not created yet
+    });
+  }, [user, friendId, messages]);
 
   const recognitionRef = useRef<any>(null);
 
@@ -262,10 +355,12 @@ export default function Chat() {
     try {  
       const chatRef = doc(db, 'chats', chatId);  
       await setDoc(chatRef, {  
-        participants: [user.uid, friendId],  
+        participants: [user.uid, friendId].sort(),  
         lastMessage: currentAttachment ? `[${currentAttachment.type}]` : messageText,  
         lastMessageAt: serverTimestamp(),  
         lastMessageSenderId: user.uid,
+        [`unreadCount.${friendId}`]: increment(1),
+        [`unreadCount.${user.uid}`]: 0,
         updatedAt: serverTimestamp()  
       }, { merge: true });  
 
@@ -410,14 +505,6 @@ export default function Chat() {
   const messageGroups = groupMessagesByDate(messages);
   const isOnline = friendProfile?.isOnline;
 
-  if (loading) {
-    return (
-      <div className="flex flex-col h-screen bg-[#FDFBF7] dark:bg-gray-900 items-center justify-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full bg-[#FDFBF7] dark:bg-gray-900 overflow-hidden relative">
       {/* Header */}
@@ -427,24 +514,22 @@ export default function Chat() {
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          {friendProfile && (  
-            <div className="flex items-center gap-3">  
-              <div className="relative w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 overflow-hidden border border-orange-500/20">  
-                <img src={getAvatarUrl(friendProfile)} alt="Avatar" className="w-full h-full object-cover" />  
-              </div>  
-              <div className="flex flex-col">  
-                <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">  
-                  {nicknames[friendId!] || friendProfile.name || friendProfile.username}  
-                </h2>  
-                <div className="flex items-center gap-1.5 mt-0.5">  
-                  <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>  
-                  <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider">  
-                    {isOnline ? 'Online' : 'Offline'}  
-                  </p>  
-                </div>  
+          <div className="flex items-center gap-3">  
+            <div className="relative w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 overflow-hidden border border-orange-500/20">  
+              <img src={getAvatarUrl(friendProfile)} alt="Avatar" className="w-full h-full object-cover" />  
+            </div>  
+            <div className="flex flex-col">  
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">  
+                {nicknames[friendId!] || friendProfile?.name || friendProfile?.username || "Friend"}  
+              </h2>  
+              <div className="flex items-center gap-1.5 mt-0.5">  
+                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>  
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider">  
+                  {isOnline ? 'Online' : 'Offline'}  
+                </p>  
               </div>  
             </div>  
-          )}  
+          </div>  
         </div>  
 
         <div className="relative">  
