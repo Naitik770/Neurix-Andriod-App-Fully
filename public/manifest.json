@@ -1,5 +1,4 @@
-{
-  "name": "NAITIX - AI Life OS",
+"name": "NAITIX - AI Life OS",
   "short_name": "NAITIX",
   "description": "Transform Your Life with AI.",
   "start_url": "/",
@@ -9,16 +8,28 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png",
+      "src": "/Logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png",
+      "src": "/Logo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/Logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
