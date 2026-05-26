@@ -1,6 +1,6 @@
 {
-	"appId": "com.neurix.app",
-	"appName": "NEURIX AI",
+	"appId": "com.naitix.app",
+	"appName": "NAITIX AI",
 	"webDir": "dist",
 	"bundledWebRuntime": false
 }

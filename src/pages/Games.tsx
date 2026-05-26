@@ -1,56 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth, getAvatarUrl } from '../App';
-import { Search, Play, Heart, ChevronLeft, Bell, Brain, Zap, Puzzle, Target, Wind } from 'lucide-react';
+import { Search, Play, Heart, ChevronLeft, Bell, Brain, Zap, Puzzle, Target, Wind, Palette, Hash, Type, Network, Shapes, MousePointerClick, Cpu, LineChart, Lock, Award, Gamepad2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import GameEngine from '../components/games/GameEngine';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { getTargetScore } from '../components/games/gameScore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
-const GAME_TYPES = ['Color Match', 'Memory Matrix', 'Speed Match', 'Math Rush', 'Word Scramble', 'Pattern Recognition', 'Spatial Reasoning', 'Reaction Time', 'Logic Flow', 'Cognitive Load Challenge'];
-const CATEGORIES = ['Focus', 'Memory', 'Focus', 'Math', 'Language', 'Memory', 'Logic', 'Focus', 'Logic', 'Focus'];
-const ICONS = [Zap, Brain, Zap, Target, Brain, Brain, Puzzle, Target, Brain, Zap];
-const BGS = ['bg-[#FFEFE5]', 'bg-purple-100', 'bg-yellow-100', 'bg-blue-100', 'bg-green-100', 'bg-pink-100', 'bg-indigo-100', 'bg-teal-100', 'bg-orange-100', 'bg-red-100'];
-const COLORS = ['text-orange-500', 'text-purple-500', 'text-yellow-600', 'text-blue-500', 'text-green-500', 'text-pink-500', 'text-indigo-500', 'text-teal-500', 'text-orange-600', 'text-red-500'];
+export const BASE_GAMES = [
+  { id: 'color_match', title: 'Color Match', type: 'Color Match', category: 'Focus', icon: Palette, bg: 'bg-[#FFEFE5]', color: 'text-orange-500', shadow: 'shadow-orange-500/20' },
+  { id: 'memory_matrix', title: 'Memory Matrix', type: 'Memory Matrix', category: 'Memory', icon: Brain, bg: 'bg-purple-100', color: 'text-purple-500', shadow: 'shadow-purple-500/20' },
+  { id: 'speed_match', title: 'Speed Match', type: 'Speed Match', category: 'Focus', icon: Zap, bg: 'bg-yellow-100', color: 'text-yellow-600', shadow: 'shadow-yellow-500/20' },
+  { id: 'math_rush', title: 'Math Rush', type: 'Math Rush', category: 'Math', icon: Hash, bg: 'bg-blue-100', color: 'text-blue-500', shadow: 'shadow-blue-500/20' },
+  { id: 'word_scramble', title: 'Word Scramble', type: 'Word Scramble', category: 'Language', icon: Type, bg: 'bg-green-100', color: 'text-green-500', shadow: 'shadow-green-500/20' },
+  { id: 'pattern_rec', title: 'Pattern Recognition', type: 'Pattern Recognition', category: 'Memory', icon: Network, bg: 'bg-pink-100', color: 'text-pink-500', shadow: 'shadow-pink-500/20' },
+  { id: 'spatial_reasoning', title: 'Spatial Reasoning', type: 'Spatial Reasoning', category: 'Logic', icon: Shapes, bg: 'bg-indigo-100', color: 'text-indigo-500', shadow: 'shadow-indigo-500/20' },
+  { id: 'reaction_time', title: 'Reaction Time', type: 'Reaction Time', category: 'Focus', icon: MousePointerClick, bg: 'bg-teal-100', color: 'text-teal-500', shadow: 'shadow-teal-500/20' },
+  { id: 'logic_flow', title: 'Logic Flow', type: 'Logic Flow', category: 'Logic', icon: Puzzle, bg: 'bg-orange-100', color: 'text-orange-600', shadow: 'shadow-orange-500/20' },
+  { id: 'cog_load', title: 'Cognitive Load', type: 'Cognitive Load Challenge', category: 'Focus', icon: Cpu, bg: 'bg-red-100', color: 'text-red-500', shadow: 'shadow-red-500/20' },
+];
 
-const generateGamesList = () => {
-  const list = [];
-  for (let i = 1; i <= GAME_TYPES.length * 30; i++) {
-    const typeIndex = (i - 1) % GAME_TYPES.length;
-    const type = GAME_TYPES[typeIndex];
-    const level = Math.ceil(i / GAME_TYPES.length);
-    
-    let difficulty = 'Easy';
-    if (level > 20) difficulty = 'Hard';
-    else if (level > 10) difficulty = 'Medium';
-
-    list.push({
-      id: i,
-      title: `${type} Lvl ${level}`,
-      type: type,
-      level: level,
-      difficulty: difficulty,
-      category: CATEGORIES[typeIndex],
-      icon: ICONS[typeIndex],
-      bg: BGS[typeIndex],
-      color: COLORS[typeIndex],
-      image: `https://images.unsplash.com/photo-${[
-        '1550684848-fac1c5b4e853', // Color Match
-        '1558655146-d09347e92766', // Memory Matrix
-        '1484480974627-29255d9130ac', // Speed Match
-        '1509228468518-180dd4864904', // Math Rush
-        '1455390582262-044cdead277a', // Word Scramble
-        '1550684376-efcbd6e3f031', // Pattern Recognition
-        '1493246507139-91e8fad9978e', // Spatial Reasoning
-        '1559757175-5700dde675bc', // Reaction Time
-        '1517694712202-14dd9538aa97', // Logic Flow
-        '1551818255-e6e10975bc17'  // Cognitive Load Challenge
-      ][typeIndex]}?w=400&q=80`
-    });
-  }
-  return list;
+const getDifficulty = (level: number) => {
+  if (level > 20) return 'Hard';
+  if (level > 10) return 'Medium';
+  return 'Easy';
 };
-
-const GAME_TYPES_LIST = generateGamesList();
 
 const getDifficultyColor = (difficulty: string) => {
   switch (difficulty) {
@@ -223,90 +197,160 @@ const GAME_DESCRIPTIONS: Record<string, { objective: string; rules: string[] }> 
   }
 };
 
-const GameIntro = ({ game, onStart, onCancel }: { game: any; onStart: () => void; onCancel: () => void }) => {
+const GameIntro = ({ game, onStart, onCancel }: { game: any; onStart: (level: number) => void; onCancel: () => void }) => {
+  const reachedLevel = game.level || 1;
+  const [selectedLvl, setSelectedLvl] = useState(reachedLevel);
   const description = GAME_DESCRIPTIONS[game.type] || {
     objective: 'Train your brain with this engaging exercise.',
     rules: ['Follow the on-screen instructions.', 'Try to get the highest score possible.', 'Have fun!']
   };
+
+  const maxLevelsToShow = Math.max(12, reachedLevel + 4);
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-white dark:bg-gray-900 z-[60] overflow-y-auto transition-colors duration-300"
+      className="fixed inset-0 bg-[#FDFBF7] dark:bg-gray-900 z-[60] overflow-y-auto transition-colors duration-300"
     >
-      <div className="min-h-full flex flex-col p-6 max-w-md mx-auto w-full">
-        <header className="flex justify-between items-center mb-12 shrink-0">
+      <div className="min-h-full flex flex-col p-6 max-w-xl mx-auto w-full pb-20">
+        <header className="flex justify-between items-center mb-8 shrink-0">
           <button onClick={onCancel} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 text-gray-750 dark:text-gray-300" />
           </button>
           <div className="flex items-center gap-2">
             <div className={`p-2 rounded-lg ${game.bg} ${game.color}`}>
               <game.icon className="w-5 h-5" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white">{game.category}</span>
+            <span className="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs">{game.category} Training</span>
           </div>
           <div className="w-10" />
         </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="w-24 h-24 rounded-3xl overflow-hidden mb-8 shadow-2xl shrink-0"
-          >
-            <img src={game.image} alt="" className="w-full h-full object-cover" />
-          </motion.div>
+        <div className="flex-1 flex flex-col items-stretch">
+          {/* Main Badge / Icon */}
+          <div className="flex flex-col items-center mb-8">
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className={`w-28 h-28 rounded-[2rem] mb-4 shadow-xl shrink-0 flex items-center justify-center ${game.bg} ${game.color} border-4 border-white/50 dark:border-white/10`}
+            >
+              <game.icon className="w-14 h-14 stroke-[1.2]" />
+            </motion.div>
 
-          <motion.h2 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-4"
-          >
-            {game.title}
-          </motion.h2>
+            <motion.h2 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-3xl font-bold text-gray-900 dark:text-white text-center tracking-tight mb-2"
+            >
+              {game.title}
+            </motion.h2>
 
+            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-800/30">
+              <Award className="w-3.5 h-3.5" />
+              <span>Reached Level: Lvl {reachedLevel}</span>
+            </div>
+          </div>
+
+          {/* Objective Box */}
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-3xl mb-8 w-full"
+            className="bg-white dark:bg-gray-800/50 p-6 rounded-3xl mb-6 border border-gray-100 dark:border-gray-800 shadow-sm"
           >
-            <h4 className="text-orange-600 dark:text-orange-400 font-bold text-sm uppercase tracking-widest mb-2">Objective</h4>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            <h4 className="text-orange-600 dark:text-orange-400 font-bold text-xs uppercase tracking-widest mb-1.5 flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4" /> Objective
+            </h4>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
               {description.objective}
             </p>
           </motion.div>
 
+          {/* How to Play Card Rules */}
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="w-full space-y-4 mb-12"
+            className="space-y-3 mb-8"
           >
-            <h4 className="text-gray-400 dark:text-gray-500 font-bold text-sm uppercase tracking-widest px-2">How to play</h4>
+            <h4 className="text-gray-400 dark:text-gray-500 font-bold text-xs uppercase tracking-widest px-2">How to Play</h4>
             {description.rules.map((rule, i) => (
-              <div key={i} className="flex gap-4 items-start bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors duration-300">
-                <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-bold shrink-0">
+              <div key={i} className="flex gap-4 items-start bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
+                <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-black shrink-0">
                   {i + 1}
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{rule}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{rule}</p>
               </div>
             ))}
           </motion.div>
+
+          {/* Interactive Level Selection Grid */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.45 }}
+            className="bg-white dark:bg-gray-800/70 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm mb-10"
+          >
+            <div className="flex items-center justify-between mb-4 border-b border-gray-50 dark:border-gray-700/50 pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-orange-500" />
+                <h4 className="text-gray-900 dark:text-white font-bold text-sm uppercase tracking-widest">Level Selector</h4>
+              </div>
+              <span className="text-xs font-bold px-2.5 py-1 bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 rounded-full">
+                Lvl {selectedLvl} Selected
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              Unlock higher levels by completing your current level. Passing score is <span className="font-bold text-orange-500">{getTargetScore(game.type, selectedLvl)}</span> points.
+            </p>
+
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+              {Array.from({ length: maxLevelsToShow }).map((_, idx) => {
+                const lvl = idx + 1;
+                const isUnlocked = lvl <= reachedLevel;
+                const isSelected = lvl === selectedLvl;
+
+                return (
+                  <button
+                    key={lvl}
+                    disabled={!isUnlocked}
+                    onClick={() => setSelectedLvl(lvl)}
+                    className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center font-bold text-xs transition-all duration-200 border ${
+                      isSelected
+                        ? 'bg-orange-500 text-white border-transparent shadow-lg shadow-orange-500/30 scale-105 ring-2 ring-orange-400 ring-offset-2 dark:ring-offset-gray-800 font-extrabold'
+                        : isUnlocked
+                          ? 'bg-orange-50/50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-100/60 dark:border-orange-900/30 cursor-pointer'
+                          : 'bg-gray-50 dark:bg-gray-800/40 text-gray-300 dark:text-gray-600 border-gray-100 dark:border-gray-850 cursor-not-allowed'
+                    }`}
+                  >
+                    <span className="opacity-70 text-[10px]">Lvl</span>
+                    <span className="text-base font-black">{lvl}</span>
+                    {!isUnlocked && (
+                      <div className="absolute top-1 right-1 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-full border border-gray-100 dark:border-gray-700/50">
+                        <Lock className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
 
+        {/* Start Game Action Button */}
         <motion.button
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
-          onClick={onStart}
-          className="w-full py-5 rounded-2xl bg-orange-500 text-white font-bold text-lg shadow-xl shadow-orange-500/30 hover:bg-orange-600 transition-all active:scale-95 mb-4 shrink-0"
+          onClick={() => onStart(selectedLvl)}
+          className="w-full py-5 rounded-2xl bg-orange-500 text-white font-bold text-lg shadow-xl shadow-orange-500/30 hover:bg-orange-600 transition-all active:scale-95 shrink-0 animate-bounce"
         >
-          Start Game
+          Start Game Level {selectedLvl}
         </motion.button>
       </div>
     </motion.div>
@@ -321,30 +365,59 @@ export default function Games() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPlayLevel, setSelectedPlayLevel] = useState<number>(1);
 
-  const categories = [
+  useEffect(() => {
+    if (activeGame) {
+      setSelectedPlayLevel(activeGame.level || 1);
+    }
+  }, [activeGame]);
+
+  const gameLevels = profile?.gameLevels || {};
+  
+  const gamesWithLevels = useMemo(() => {
+    return BASE_GAMES.map(game => {
+      const level = gameLevels[game.id] || 1;
+      const difficulty = getDifficulty(level);
+      return {
+        ...game,
+        level,
+        difficulty,
+        displayTitle: `${game.title} Lvl ${level}`
+      };
+    });
+  }, [gameLevels]);
+
+  const categories = useMemo(() => [
     { id: 'Focus', name: 'Quick Focus', icon: Zap, color: 'text-orange-500', bg: 'bg-[#FFEFE5]' },
     { id: 'Memory', name: 'Memory', icon: Brain, color: 'text-purple-500', bg: 'bg-purple-100' },
     { id: 'Logic', name: 'Logic Puzzles', icon: Puzzle, color: 'text-yellow-600', bg: 'bg-yellow-100' },
     { id: 'relax', name: 'Mind & Relax', icon: Wind, color: 'text-blue-500', bg: 'bg-blue-100' },
-  ];
+  ], []);
 
-  const filteredGames = GAME_TYPES_LIST.filter(g => {
-    const matchesCategory = selectedCategory ? g.category === selectedCategory : true;
-    const matchesDifficulty = selectedDifficulty ? g.difficulty === selectedDifficulty : true;
-    const matchesSearch = searchQuery ? g.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-    return matchesCategory && matchesDifficulty && matchesSearch;
-  });
+  const filteredGames = useMemo(() => {
+    return gamesWithLevels.filter(g => {
+      const matchesCategory = selectedCategory ? g.category === selectedCategory : true;
+      const matchesDifficulty = selectedDifficulty ? g.difficulty === selectedDifficulty : true;
+      const matchesSearch = searchQuery ? g.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+      return matchesCategory && matchesDifficulty && matchesSearch;
+    });
+  }, [gamesWithLevels, selectedCategory, selectedDifficulty, searchQuery]);
 
-  const displayGames = selectedCategory || searchQuery
-    ? filteredGames
-    : filteredGames.slice(0, 8);
+  const displayGames = useMemo(() => {
+    return selectedCategory || searchQuery
+      ? filteredGames
+      : filteredGames.slice(0, 8);
+  }, [filteredGames, selectedCategory, searchQuery]);
 
   if (activeGame && showIntro) {
     return (
       <GameIntro 
         game={activeGame} 
-        onStart={() => setShowIntro(false)} 
+        onStart={(chosenLvl: number) => {
+          setSelectedPlayLevel(chosenLvl);
+          setShowIntro(false);
+        }} 
         onCancel={() => {
           setActiveGame(null);
           setShowIntro(false);
@@ -354,26 +427,16 @@ export default function Games() {
   }
 
   if (activeGame && !showIntro) {
+    const gameWithChosenLvl = {
+      ...activeGame,
+      level: selectedPlayLevel,
+      displayTitle: `${activeGame.title} Lvl ${selectedPlayLevel}`
+    };
     return (
       <GameEngine 
-        game={activeGame} 
+        game={gameWithChosenLvl} 
         onClose={() => setActiveGame(null)} 
-        onComplete={async (xpEarned: number) => {
-          if (!user) return;
-          try {
-            await addDoc(collection(db, 'users', user.uid, 'gameSessions'), {
-              gameId: activeGame.id,
-              gameTitle: activeGame.title,
-              category: activeGame.category,
-              score: xpEarned,
-              playedAt: serverTimestamp()
-            });
-            await updateDoc(doc(db, 'users', user.uid), {
-              xp: (profile?.xp || 0) + xpEarned
-            });
-          } catch (error) {
-            handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/gameSessions`);
-          }
+        onComplete={(xpEarned: number, passedLevel: boolean) => {
           setActiveGame(null);
         }} 
       />
@@ -382,7 +445,10 @@ export default function Games() {
 
   if (view === 'relax') {
     return (
-      <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 flex flex-col items-center text-gray-900 dark:text-white transition-colors duration-300">
+      <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 flex flex-col items-center text-gray-900 dark:text-white transition-colors duration-300 relative overflow-x-hidden">
+        {/* Decorative Ambient Background Gradients */}
+        <div className="absolute top-0 right-0 w-[240px] h-[240px] sm:w-[480px] sm:h-[480px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.14)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+        <div className="absolute top-0 left-0 w-[180px] h-[180px] sm:w-[350px] sm:h-[350px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
         <header className="w-full flex justify-between items-center mb-12">
           <button onClick={() => setView('home')} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <ChevronLeft className="w-5 h-5" />
@@ -398,7 +464,10 @@ export default function Games() {
 
   if (view === 'allGames') {
     return (
-      <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+      <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 relative overflow-x-hidden">
+        {/* Decorative Ambient Background Gradients */}
+        <div className="absolute top-0 right-0 w-[240px] h-[240px] sm:w-[480px] sm:h-[480px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.14)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+        <div className="absolute top-0 left-0 w-[180px] h-[180px] sm:w-[350px] sm:h-[350px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
         <header className="flex justify-between items-center mb-8">
           <button onClick={() => {setView('home'); setSearchQuery(''); setSelectedDifficulty(null);}} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <ChevronLeft className="w-5 h-5" />
@@ -459,10 +528,9 @@ export default function Games() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 pb-24">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {filteredGames.slice(0, 50).map((game) => (
               <motion.div 
-                layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -473,26 +541,29 @@ export default function Games() {
                   setActiveGame(game);
                   setShowIntro(true);
                 }}
-                className={`group ${game.bg} dark:opacity-90 rounded-[2rem] p-5 relative overflow-hidden aspect-[4/5] flex flex-col justify-between cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 border border-transparent dark:border-gray-700`}
+                className={`group ${game.bg} dark:bg-opacity-10 rounded-[2rem] p-5 relative overflow-hidden aspect-[4/5] flex flex-col justify-between cursor-pointer ${game.shadow} hover:shadow-2xl transition-all duration-300 border border-transparent dark:border-gray-700 hover:-translate-y-1 transform-gpu`}
               >
-                {/* Background Pattern/Image */}
-                <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <img src={game.image} alt="" className="w-full h-full object-cover grayscale" />
+                {/* Background Pattern/Icon */}
+                <div className={`absolute -right-6 -bottom-6 opacity-[0.08] group-hover:opacity-[0.14] transition-all duration-500 group-hover:scale-110 group-hover:-rotate-12 ${game.color}`}>
+                  <game.icon className="w-40 h-40" />
                 </div>
 
                 <div className="flex justify-between items-start relative z-10">
-                  <div className={`p-2 rounded-xl bg-white/60 dark:bg-black/40 backdrop-blur-md ${game.color}`}>
-                    <game.icon className="w-5 h-5" />
+                  <div className={`p-3 rounded-2xl bg-white/90 dark:bg-black/60 shadow-sm border border-white/50 dark:border-white/10 ${game.color}`}>
+                    <game.icon className="w-6 h-6 stroke-[1.5]" />
                   </div>
                 </div>
                 
-                <div className="relative z-10">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <p className="text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-widest">{game.category}</p>
-                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                    <p className={`text-[9px] font-black uppercase tracking-tighter ${getDifficultyColor(game.difficulty)}`}>{game.difficulty}</p>
+                <div className="relative z-10 mt-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-lg">
+                      <p className="text-[10px] text-gray-700 dark:text-gray-300 font-bold uppercase tracking-widest">{game.category}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-lg">
+                       <p className={`text-[10px] font-black uppercase tracking-tighter ${getDifficultyColor(game.difficulty)}`}>{game.difficulty}</p>
+                    </div>
                   </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight group-hover:text-orange-600 transition-colors">{game.title}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight">{game.displayTitle}</h3>
                 </div>
 
                 {/* Play Button Overlay */}
@@ -528,7 +599,10 @@ export default function Games() {
   }
 
   return (
-    <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 overflow-y-auto">
+    <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 overflow-y-auto relative overflow-x-hidden">
+      {/* Decorative Ambient Background Gradients */}
+      <div className="absolute top-0 right-0 w-[240px] h-[240px] sm:w-[500px] sm:h-[500px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.14)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+      <div className="absolute top-0 left-0 w-[180px] h-[180px] sm:w-[350px] sm:h-[350px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
       <header className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1 transition-colors duration-300">Hello, {profile?.name?.split(' ')[0] || 'Devon'}</h1>
@@ -587,7 +661,7 @@ export default function Games() {
 
       <div className="flex justify-between items-end mb-4">
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300">{selectedCategory ? `${selectedCategory} Games` : searchQuery ? 'Search Results' : 'Popular games'}</h3>
-        <button onClick={() => {setView('allGames'); setSelectedCategory(null); setSearchQuery('');}} className="text-xs text-orange-500 font-medium hover:text-orange-600">See all {GAME_TYPES_LIST.length}+</button>
+        <button onClick={() => {setView('allGames'); setSelectedCategory(null); setSearchQuery('');}} className="text-xs text-orange-500 font-medium hover:text-orange-600">See all</button>
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-8 -mx-6 px-6 snap-x hide-scrollbar">
@@ -600,26 +674,29 @@ export default function Games() {
               setActiveGame(game);
               setShowIntro(true);
             }}
-            className={`group ${game.bg} dark:opacity-90 min-w-[220px] rounded-[2rem] p-5 relative overflow-hidden aspect-[4/5] flex flex-col justify-between cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 border border-transparent dark:border-gray-700 snap-center`}
+            className={`group ${game.bg} dark:bg-opacity-10 min-w-[220px] rounded-[2rem] p-5 relative overflow-hidden aspect-[4/5] flex flex-col justify-between cursor-pointer ${game.shadow} hover:shadow-2xl transition-all duration-300 border border-transparent dark:border-gray-700 hover:-translate-y-1 snap-center`}
           >
-            {/* Background Pattern/Image */}
-            <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity">
-              <img src={game.image} alt="" className="w-full h-full object-cover grayscale" referrerPolicy="no-referrer" />
+            {/* Background Pattern/Icon */}
+            <div className={`absolute -right-6 -bottom-6 opacity-[0.08] group-hover:opacity-[0.14] transition-all duration-500 group-hover:scale-110 group-hover:-rotate-12 ${game.color}`}>
+              <game.icon className="w-40 h-40" />
             </div>
 
             <div className="flex justify-between items-start relative z-10">
-              <div className={`p-2 rounded-xl bg-white/60 dark:bg-black/40 backdrop-blur-md ${game.color}`}>
-                <game.icon className="w-5 h-5" />
+              <div className={`p-3 rounded-2xl bg-white/90 dark:bg-black/60 shadow-sm border border-white/50 dark:border-white/10 ${game.color}`}>
+                <game.icon className="w-6 h-6 stroke-[1.5]" />
               </div>
             </div>
             
-            <div className="relative z-10">
-              <div className="flex items-center gap-1.5 mb-1">
-                <p className="text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-widest">{game.category}</p>
-                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                <p className={`text-[9px] font-black uppercase tracking-tighter ${getDifficultyColor(game.difficulty)}`}>{game.difficulty}</p>
+            <div className="relative z-10 mt-auto">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-lg">
+                  <p className="text-[10px] text-gray-700 dark:text-gray-300 font-bold uppercase tracking-widest">{game.category}</p>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white/90 dark:bg-black/60 px-2 py-1 rounded-lg">
+                   <p className={`text-[10px] font-black uppercase tracking-tighter ${getDifficultyColor(game.difficulty)}`}>{game.difficulty}</p>
+                </div>
               </div>
-              <h4 className="font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-orange-600 transition-colors">{game.title}</h4>
+              <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight">{game.displayTitle}</h3>
             </div>
 
             {/* Play Button Overlay */}

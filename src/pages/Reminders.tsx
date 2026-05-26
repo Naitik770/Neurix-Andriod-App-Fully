@@ -155,7 +155,7 @@ export default function Reminders() {
     const handleAppInstalled = () => {
       console.log('App was installed');
       setDeferredPrompt(null);
-      toast.success("NEURIX installed successfully!");
+      toast.success("NAITIX installed successfully!");
     };
     window.addEventListener('appinstalled', handleAppInstalled);
 
@@ -192,7 +192,7 @@ export default function Reminders() {
       setPermissionState(permission);
       
       if (permission === "granted") {
-        const title = "✦ NEURIX AI";
+        const title = "✦ NAITIX AI";
         const options = { 
           body: "✦ Scheduled: System automated reminders are fully operational.",
           icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
@@ -234,7 +234,7 @@ export default function Reminders() {
             <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Manage your daily alerts</p>
             {lastChecked && (
               <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full text-gray-400 dark:text-gray-500 transition-colors duration-300">
-                Sync {format(lastChecked, 'HH:mm:ss')}
+                Sync {format(lastChecked, 'hh:mm:ss a')}
               </span>
             )}
           </div>

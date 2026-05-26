@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neurix-v1';
+const CACHE_NAME = 'naitix-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -41,12 +41,12 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || '⏰ NEURIX Reminder', {
-      body: 'NEURIX: Scheduled Task',
-      icon: 'https://picsum.photos/seed/neurix/192/192',
-      badge: 'https://picsum.photos/seed/neurix/192/192',
+    self.registration.showNotification(data.title || '⏰ NAITIX Reminder', {
+      body: 'NAITIX: Scheduled Task',
+      icon: 'https://picsum.photos/seed/naitix/192/192',
+      badge: 'https://picsum.photos/seed/naitix/192/192',
       vibrate: [200, 100, 200],
-      tag: data.tag || 'neurix-reminder',
+      tag: data.tag || 'naitix-reminder',
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true

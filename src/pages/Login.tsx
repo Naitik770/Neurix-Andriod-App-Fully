@@ -68,16 +68,16 @@ export default function Login() {
         <div className="flex items-center gap-3 mb-6">
           <img 
             src="/Logo.png" 
-            alt="NEURIX AI Logo" 
+            alt="NAITIX AI Logo" 
             className="w-12 h-12 rounded-2xl object-contain shadow-md shadow-orange-500/10"
             referrerPolicy="no-referrer"
           />
           <div className="text-xl font-black tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-            NEURIX AI
+            NAITIX AI
           </div>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Welcome Back</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8 transition-colors duration-300">Sign in to continue to NEURIX</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 transition-colors duration-300">Sign in to continue to NAITIX</p>
         
         <form onSubmit={handleLogin} className="space-y-4">
           <input

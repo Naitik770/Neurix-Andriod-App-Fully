@@ -6,7 +6,10 @@ export default function About() {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen font-sans pb-16 transition-colors duration-300">
+    <div className="bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen font-sans pb-16 transition-colors duration-300 relative overflow-x-hidden">
+      {/* Decorative Ambient Background Gradients */}
+      <div className="absolute top-0 right-0 w-[240px] h-[240px] sm:w-[500px] sm:h-[500px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.14)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+      <div className="absolute top-0 left-0 w-[180px] h-[180px] sm:w-[350px] sm:h-[350px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
       
       {/* Header */}
       <header className="border-b border-orange-100/50 dark:border-gray-900 bg-white dark:bg-gray-900 shadow-sm">
@@ -21,12 +24,12 @@ export default function About() {
             <div className="flex items-center gap-2">
               <img 
                 src="/Logo.png" 
-                alt="NEURIX AI Logo" 
+                alt="NAITIX AI Logo" 
                 className="w-7 h-7 rounded-lg object-contain" 
                 referrerPolicy="no-referrer"
               />
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-                NEURIX AI
+                NAITIX AI
               </span>
             </div>
           </div>
@@ -48,10 +51,10 @@ export default function About() {
             Our Mission & Science
           </span>
           <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-            About NEURIX AI
+            About NAITIX AI
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-            NEURIX AI is a comprehensive life-management and neuro-productivity platform designed for high-performing students, professionals, and lifelong learners. We blend computational neuroscience with cutting-edge artificial intelligence to deliver customized feedback loops that elevate human focus, daily routines, and mental resilience.
+            NAITIX AI is a comprehensive life-management and neuro-productivity platform designed for high-performing students, professionals, and lifelong learners. We blend computational neuroscience with cutting-edge artificial intelligence to deliver customized feedback loops that elevate human focus, daily routines, and mental resilience.
           </p>
         </div>
 
@@ -100,9 +103,9 @@ export default function About() {
 
         {/* Detailed About section (needed to provide high-quality read material for adsense bots) */}
         <article className="prose dark:prose-invert prose-orange max-w-none text-gray-600 dark:text-gray-300 space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Why NEURIX AI?</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Why NAITIX AI?</h2>
           <p>
-            In today's digital landscape, keeping track of tasks, physical health logs, and mental wellness is fragmented across multiple disjointed mobile and web tools. This results in software fatigue and fragmented attention. NEURIX AI resolves this by serving as a single-screen dashboard framework merging five pillars of daily self-optimization:
+            In today's digital landscape, keeping track of tasks, physical health logs, and mental wellness is fragmented across multiple disjointed mobile and web tools. This results in software fatigue and fragmented attention. NAITIX AI resolves this by serving as a single-screen dashboard framework merging five pillars of daily self-optimization:
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li><strong>AI Cognitive Coaching:</strong> Uses Google's Gemini models natively to answer open-ended productivity questions, assist with scheduling conflicts, and break down complex ambitions into bitesize, achievable targets.</li>
@@ -122,7 +125,7 @@ export default function About() {
 
         {/* Footer info wrapper */}
         <div className="pt-8 border-t border-orange-100/30 dark:border-gray-900 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 flex-wrap gap-4">
-          <span>NEURIX AI Cognitive Training Framework v1.02</span>
+          <span>NAITIX AI Cognitive Training Framework v1.02</span>
           <div className="flex gap-4">
             <Link to="/privacy-policy" className="hover:text-orange-500">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-orange-500">Terms of Use</Link>

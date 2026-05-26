@@ -21,12 +21,12 @@ export default function PrivacyPolicy() {
             <div className="flex items-center gap-2">
               <img 
                 src="/Logo.png" 
-                alt="NEURIX AI Logo" 
+                alt="NAITIX AI Logo" 
                 className="w-7 h-7 rounded-lg object-contain" 
                 referrerPolicy="no-referrer"
               />
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-                NEURIX AI
+                NAITIX AI
               </span>
             </div>
           </div>
@@ -77,10 +77,10 @@ export default function PrivacyPolicy() {
 
         <article className="prose dark:prose-invert prose-orange max-w-none text-gray-650 dark:text-gray-300 space-y-6 text-sm sm:text-base leading-relaxed">
           <p>
-            At NEURIX AI, accessible from our application platform, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by NEURIX AI and how we use it.
+            At NAITIX AI, accessible from our application platform, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by NAITIX AI and how we use it.
           </p>
           <p>
-            If you have additional questions or require more information about our Privacy Policy, do not hesitate to contact us at <strong><a href="mailto:help.neurix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.neurix@gmail.com</a></strong>.
+            If you have additional questions or require more information about our Privacy Policy, do not hesitate to contact us at <strong><a href="mailto:help.naitix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.naitix@gmail.com</a></strong>.
           </p>
 
           <h2 className="text-xl font-bold text-gray-950 dark:text-white pt-4">1. Information We Collect</h2>
@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
 
           <h2 className="text-xl font-bold text-gray-950 dark:text-white pt-4">3. Log Files and Analytical Data</h2>
           <p>
-            NEURIX AI follows a standard procedure of using log files. These files log visitors when they visit web applications. All hosting companies do this as part of hosting services' analytics. The information collected by log files includes internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks. These are not linked to any information that is personally identifiable. The purpose of the information is for analyzing trends, administering the site, tracking users' movement on the website, and gathering demographic information.
+            NAITIX AI follows a standard procedure of using log files. These files log visitors when they visit web applications. All hosting companies do this as part of hosting services' analytics. The information collected by log files includes internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks. These are not linked to any information that is personally identifiable. The purpose of the information is for analyzing trends, administering the site, tracking users' movement on the website, and gathering demographic information.
           </p>
 
           <h2 className="text-xl font-bold text-gray-950 dark:text-white pt-4 text-orange-600 dark:text-orange-400">4. Google DoubleClick DART Cookies & AdSense Disclosure</h2>
@@ -115,15 +115,15 @@ export default function PrivacyPolicy() {
             Google is one of the third-party vendors on our site. It also uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to our web elements and other sites on the internet. However, visitors may choose to decline the use of DART cookies by visiting the Google ad and content network Privacy Policy at the following URL: <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer" className="text-orange-500 font-bold hover:underline">https://policies.google.com/technologies/ads</a>.
           </p>
           <p>
-            Please note that third-party ad servers or ad networks use technologies like cookies, JavaScript, or Web Beacons that are used in their respective advertisements and links that appear on NEURIX AI, which are sent directly to users' browsers. They automatically receive your IP address when this occurs. These technologies are used to measure the effectiveness of their advertising campaigns and/or to personalize the advertising content that you see on websites that you visit.
+            Please note that third-party ad servers or ad networks use technologies like cookies, JavaScript, or Web Beacons that are used in their respective advertisements and links that appear on NAITIX AI, which are sent directly to users' browsers. They automatically receive your IP address when this occurs. These technologies are used to measure the effectiveness of their advertising campaigns and/or to personalize the advertising content that you see on websites that you visit.
           </p>
           <p>
-            NEURIX AI has no access to or control over these cookies that are used by third-party advertisers.
+            NAITIX AI has no access to or control over these cookies that are used by third-party advertisers.
           </p>
 
           <h2 className="text-xl font-bold text-gray-950 dark:text-white pt-4">5. Third-Party Privacy Policies</h2>
           <p>
-            NEURIX AI's Privacy Policy does not apply to other advertisers or websites. Thus, we are advising you to consult the respective Privacy Policies of these third-party ad servers for more detailed information. It may include their practices and instructions about how to opt-out of certain options.
+            NAITIX AI's Privacy Policy does not apply to other advertisers or websites. Thus, we are advising you to consult the respective Privacy Policies of these third-party ad servers for more detailed information. It may include their practices and instructions about how to opt-out of certain options.
           </p>
           <p>
             You can choose to disable cookies through your individual browser options. To know more detailed information about cookie management with specific web browsers, it can be found at the browsers' respective websites.
@@ -155,23 +155,23 @@ export default function PrivacyPolicy() {
             Another part of our priority is adding protection for children while using the internet. We encourage parents and guardians to observe, participate in, and/or monitor and guide their online activity.
           </p>
           <p>
-            NEURIX AI does not knowingly collect any Personal Identifiable Information from children under the age of 13. If you think that your child provided this kind of information on our website, we strongly encourage you to contact us immediately and we will do our best efforts to promptly remove such information from our records.
+            NAITIX AI does not knowingly collect any Personal Identifiable Information from children under the age of 13. If you think that your child provided this kind of information on our website, we strongly encourage you to contact us immediately and we will do our best efforts to promptly remove such information from our records.
           </p>
 
           <h2 className="text-xl font-bold text-gray-950 dark:text-white pt-4">9. Contact Information</h2>
           <p>
-            If you have structural complaints, privacy concerns, CCPA deletion requests, or other regulatory considerations relative to NEURIX AI, please send them directly to:
+            If you have structural complaints, privacy concerns, CCPA deletion requests, or other regulatory considerations relative to NAITIX AI, please send them directly to:
           </p>
           <div className="p-4 bg-orange-50/30 rounded-2xl border border-orange-100/30 text-xs sm:text-sm space-y-1">
-            <p className="font-bold">NEURIX AI Privacy Coordinator</p>
-            <p>Email: <strong><a href="mailto:help.neurix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.neurix@gmail.com</a></strong></p>
-            <p>Address: NEURIX Tech Labs, Suite 480, San Francisco, CA 94107</p>
+            <p className="font-bold">NAITIX AI Privacy Coordinator</p>
+            <p>Email: <strong><a href="mailto:help.naitix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.naitix@gmail.com</a></strong></p>
+            <p>Address: NAITIX Tech Labs, Suite 480, San Francisco, CA 94107</p>
           </div>
         </article>
 
         {/* Footer links wrapper */}
         <div className="pt-8 border-t border-orange-100/30 dark:border-gray-900 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 flex-wrap gap-4">
-          <span>NEURIX AI Regulatory Sandbox v1.02</span>
+          <span>NAITIX AI Regulatory Sandbox v1.02</span>
           <div className="flex gap-4">
             <Link to="/about" className="hover:text-orange-500">About Our Science</Link>
             <Link to="/terms" className="hover:text-orange-500">Terms of Use</Link>

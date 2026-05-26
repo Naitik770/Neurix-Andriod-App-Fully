@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy, getDocs, getCountFromServer, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth, getAvatarUrl } from '../App';
 import { ArrowLeft, Flame, Trophy, Star, Heart, MessageCircle, UserPlus, Check, X, Shield, Calendar, MapPin, Hash } from 'lucide-react';
@@ -24,7 +24,22 @@ const FriendProfile: React.FC = () => {
     // Fetch profile data
     const unsubscribeProfile = onSnapshot(doc(db, 'publicProfiles', userId), (docSnap) => {
       if (docSnap.exists()) {
-        setProfile(docSnap.data());
+        const data = docSnap.data();
+        setProfile(data);
+        
+        // Fetch rank based on xp
+        const fetchRank = async () => {
+          try {
+            const targetXp = data.xp || 0;
+            const profilesRef = collection(db, 'publicProfiles');
+            const q = query(profilesRef, where('xp', '>', targetXp));
+            const snapshot = await getCountFromServer(q);
+            setRank(snapshot.data().count + 1);
+          } catch (error) {
+            console.error("Error fetching rank:", error);
+          }
+        };
+        fetchRank();
       } else {
         toast.error("Profile not found");
         navigate(-1);
@@ -34,32 +49,6 @@ const FriendProfile: React.FC = () => {
       handleFirestoreError(error, OperationType.GET, `publicProfiles/${userId}`);
       setLoading(false);
     });
-
-    // Fetch rank
-    const fetchRank = async () => {
-      try {
-        const profilesRef = collection(db, 'publicProfiles');
-        const q = query(profilesRef, orderBy('xp', 'desc'));
-        const querySnapshot = await getDocs(q);
-        let currentRank = 1;
-        let found = false;
-        querySnapshot.forEach((docSnap) => {
-          if (!found) {
-            if (docSnap.id === userId) {
-              found = true;
-            } else {
-              currentRank++;
-            }
-          }
-        });
-        if (found) {
-          setRank(currentRank);
-        }
-      } catch (error) {
-        console.error("Error fetching rank:", error);
-      }
-    };
-    fetchRank();
 
     // Check friendship status
     let unsubscribeFriend: (() => void) | undefined;

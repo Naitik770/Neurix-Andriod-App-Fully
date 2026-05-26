@@ -1,7 +1,7 @@
-# 🧠 NEURIX App
+# 🧠 NAITIX App
 **Master your habits. Train your mind.**
 
-NEURIX is a cutting-edge habit-building and cognitive training application designed to help users reach peak mental performance through AI-driven insights and real-time tracking.
+NAITIX is a cutting-edge habit-building and cognitive training application designed to help users reach peak mental performance through AI-driven insights and real-time tracking.
 
 ---
 
@@ -27,10 +27,6 @@ NEURIX is a cutting-edge habit-building and cognitive training application desig
 
 ## 📦 Getting Started
 
-### 1. Installation
-Clone the repository and install the necessary dependencies:
-
-```bash
-git clone [https://github.com/Naitik770/NEURIX-APP.git](https://github.com/Naitik770/NEURIX-APP.git)
-cd NEURIX-APP
-npm install
+| Step | Action |
+| :--- | :--- |
+| **1. Installation** | Clone the repository and install dependencies: <br> `git clone https://github.com/Naitik770/NAITIX-APP.git` <br> `cd NAITIX-APP` <br> `npm install` |

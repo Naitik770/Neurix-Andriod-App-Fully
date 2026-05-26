@@ -147,7 +147,7 @@ export default function CreateUsername() {
     >
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl border border-transparent dark:border-gray-700 transition-colors duration-300">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Choose a Username</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8 transition-colors duration-300">This is how others will find you on NEURIX.</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 transition-colors duration-300">This is how others will find you on NAITIX.</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="relative">

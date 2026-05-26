@@ -1,4 +1,4 @@
-package com.neurix.app;
+package com.naitix.app;
 
 import com.getcapacitor.BridgeActivity;
 

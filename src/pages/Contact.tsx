@@ -49,13 +49,13 @@ export default function Contact() {
         name: formData.name,
         email: formData.email,
         _replyto: formData.email,
-        _subject: `[NEURIX AI Contact Inquiry] ${subjectStr}`,
+        _subject: `[NAITIX AI Contact Inquiry] ${subjectStr}`,
         message: formData.message,
         _captcha: 'false', // Disables captcha for seamless API integration
         _template: 'box'   // High-contrast card email template
       };
 
-      const response = await fetch('https://formsubmit.co/ajax/help.neurix@gmail.com', {
+      const response = await fetch('https://formsubmit.co/ajax/help.naitix@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,10 +76,10 @@ export default function Contact() {
 
     if (firestoreSuccess || mailTriggerSuccess) {
       setCompleted(true);
-      toast.success('Your message has been received! Our support dispatch service is routing it to help.neurix@gmail.com.');
+      toast.success('Your message has been received! Our support dispatch service is routing it to help.naitix@gmail.com.');
       setFormData({ name: '', email: '', subject: '', message: '' });
     } else {
-      toast.error('Form submission failed. Please verify your internet connection or email help.neurix@gmail.com directly.');
+      toast.error('Form submission failed. Please verify your internet connection or email help.naitix@gmail.com directly.');
     }
 
     setIsSubmitting(false);
@@ -101,12 +101,12 @@ export default function Contact() {
             <div className="flex items-center gap-2">
               <img 
                 src="/Logo.png" 
-                alt="NEURIX AI Logo" 
+                alt="NAITIX AI Logo" 
                 className="w-7 h-7 rounded-lg object-contain" 
                 referrerPolicy="no-referrer"
               />
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-                NEURIX AI
+                NAITIX AI
               </span>
             </div>
           </div>
@@ -148,8 +148,8 @@ export default function Contact() {
                 <div>
                   <h4 className="font-bold text-sm text-gray-500 dark:text-gray-400">General Support</h4>
                   <p className="text-sm font-medium dark:text-orange-300">
-                    <a href="mailto:help.neurix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">
-                      help.neurix@gmail.com
+                    <a href="mailto:help.naitix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">
+                      help.naitix@gmail.com
                     </a>
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">Responses within 12-24 business hours.</p>
@@ -163,8 +163,8 @@ export default function Contact() {
                 <div>
                   <h4 className="font-bold text-sm text-gray-500 dark:text-gray-400">Media & Advertising Partnerships</h4>
                   <p className="text-sm font-medium">
-                    <a href="mailto:help.neurix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">
-                      help.neurix@gmail.com
+                    <a href="mailto:help.naitix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">
+                      help.naitix@gmail.com
                     </a>
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">Google AdSense partner relations.</p>
@@ -177,7 +177,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-gray-500 dark:text-gray-400">Fictional Labs Headquarters</h4>
-                  <p className="text-sm leading-relaxed">NEURIX Tech Labs, Suite 480<br />San Francisco, CA 94107</p>
+                  <p className="text-sm leading-relaxed">NAITIX Tech Labs, Suite 480<br />San Francisco, CA 94107</p>
                 </div>
               </div>
 
@@ -194,7 +194,7 @@ export default function Contact() {
             <div className="bg-orange-50/40 dark:bg-gray-900/30 p-6 rounded-3xl border border-orange-100/30 dark:border-gray-800/80">
               <h4 className="font-bold text-sm mb-2 text-orange-600 dark:text-orange-400">Google Adsense Questions?</h4>
               <p className="text-xs text-gray-500 leading-relaxed">
-                If you are looking to audit our cookies compliance, report an inappropriate banner ad, or discuss advertising space inventory on our Cognitive Platform, please direct your message specifically to <strong><a href="mailto:help.neurix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.neurix@gmail.com</a></strong>.
+                If you are looking to audit our cookies compliance, report an inappropriate banner ad, or discuss advertising space inventory on our Cognitive Platform, please direct your message specifically to <strong><a href="mailto:help.naitix@gmail.com" className="text-orange-600 dark:text-orange-400 hover:underline">help.naitix@gmail.com</a></strong>.
               </p>
             </div>
 
@@ -211,7 +211,7 @@ export default function Contact() {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black">Message Dispatched!</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
-                    Thank you for contacting NEURIX AI. An on-duty life coach coordinator or system administrator will evaluate your inquiry and email you back shortly.
+                    Thank you for contacting NAITIX AI. An on-duty life coach coordinator or system administrator will evaluate your inquiry and email you back shortly.
                   </p>
                 </div>
                 <button 

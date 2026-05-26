@@ -27,7 +27,7 @@ const saveChatToStorage = (chatId: string, msgs: any[]) => {
         copy.createdAtTime = new Date(copy.createdAt).getTime();
       }
       
-      // Strip heavy base64 data to prevent exceeding sessionStorage/localStorage quotas
+      // Strip heavy base64 data to prevent exceeding localStorage/localStorage quotas
       if (copy.attachment && copy.attachment.data && copy.attachment.data.length > 2000) {
         copy.attachment = {
           ...copy.attachment,
@@ -36,7 +36,7 @@ const saveChatToStorage = (chatId: string, msgs: any[]) => {
       }
       return copy;
     });
-    sessionStorage.setItem(`neurix_chat_persist_${chatId}`, JSON.stringify(subset));
+    localStorage.setItem(`naitix_chat_persist_${chatId}`, JSON.stringify(subset));
   } catch (err) {
     console.warn("Storage sync failed:", err);
   }
@@ -44,7 +44,7 @@ const saveChatToStorage = (chatId: string, msgs: any[]) => {
 
 const loadChatFromStorage = (chatId: string): any[] => {
   try {
-    const raw = sessionStorage.getItem(`neurix_chat_persist_${chatId}`);
+    const raw = localStorage.getItem(`naitix_chat_persist_${chatId}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return parsed.map((m: any) => ({
@@ -58,13 +58,13 @@ const loadChatFromStorage = (chatId: string): any[] => {
 
 const saveProfileToStorage = (friendId: string, profile: any) => {
   try {
-    sessionStorage.setItem(`neurix_profile_persist_${friendId}`, JSON.stringify(profile));
+    localStorage.setItem(`naitix_profile_persist_${friendId}`, JSON.stringify(profile));
   } catch (err) {}
 };
 
 const loadProfileFromStorage = (friendId: string): any => {
   try {
-    const raw = sessionStorage.getItem(`neurix_profile_persist_${friendId}`);
+    const raw = localStorage.getItem(`naitix_profile_persist_${friendId}`);
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
     return null;
@@ -104,6 +104,23 @@ export default function Chat() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close more-vertical menu when clicking outside of it (professional click-away experience)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [chatMetadata, setChatMetadata] = useState<any>(null);
   const [nicknames, setNicknames] = useState<{ [key: string]: string }>({});
@@ -186,11 +203,16 @@ export default function Chat() {
     if (!user || !friendId) return;
     const chatId = [user.uid, friendId].sort().join('_');
     const chatRef = doc(db, 'chats', chatId);
+    
+    // Clear nested field using updateDoc
     updateDoc(chatRef, {
       [`unreadCount.${user.uid}`]: 0
-    }).catch((err) => {
-      // Soft fail if document not created yet
-    });
+    }).catch(() => {});
+
+    // Clear flat field using setDoc (setDoc doesn't parse dots as paths)
+    setDoc(chatRef, {
+      [`unreadCount.${user.uid}`]: 0
+    }, { merge: true }).catch(() => {});
   }, [user, friendId, messages]);
 
   const recognitionRef = useRef<any>(null);
@@ -352,17 +374,17 @@ export default function Chat() {
     setAttachment(null);  
     setReplyingTo(null);  
 
-    try {  
-      const chatRef = doc(db, 'chats', chatId);  
-      await setDoc(chatRef, {  
-        participants: [user.uid, friendId].sort(),  
-        lastMessage: currentAttachment ? `[${currentAttachment.type}]` : messageText,  
-        lastMessageAt: serverTimestamp(),  
-        lastMessageSenderId: user.uid,
-        [`unreadCount.${friendId}`]: increment(1),
-        [`unreadCount.${user.uid}`]: 0,
-        updatedAt: serverTimestamp()  
-      }, { merge: true });  
+      try {  
+        const chatRef = doc(db, 'chats', chatId);  
+        await setDoc(chatRef, {  
+          participants: [user.uid, friendId].sort(),  
+          lastMessage: currentAttachment ? `[${currentAttachment.type}]` : messageText,  
+          lastMessageAt: serverTimestamp(),  
+          lastMessageSenderId: user.uid,
+          [`unreadCount.${friendId}`]: increment(1),
+          [`unreadCount.${user.uid}`]: 0,
+          updatedAt: serverTimestamp()  
+        }, { merge: true });  
 
       await addDoc(collection(db, `chats/${chatId}/messages`), {  
         senderId: user.uid,  
@@ -506,7 +528,10 @@ export default function Chat() {
   const isOnline = friendProfile?.isOnline;
 
   return (
-    <div className="flex flex-col h-full bg-[#FDFBF7] dark:bg-gray-900 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-gradient-to-tr from-[#FFF3E6] via-[#FFFAF4] to-[#F7F2EC] dark:from-gray-950 dark:via-[#16120F] dark:to-gray-950 overflow-hidden relative">
+      {/* Decorative background pattern overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed opacity-[0.04] dark:opacity-[0.015] pointer-events-none z-0" />
+
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-700 z-30">
         <div className="flex items-center gap-2">
@@ -532,30 +557,27 @@ export default function Chat() {
           </div>  
         </div>  
 
-        <div className="relative">  
+        <div className="relative" ref={menuRef}>  
           <button onClick={() => setShowMenu(!showMenu)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">  
             <MoreVertical className="w-5 h-5" />  
           </button>  
           <AnimatePresence>  
             {showMenu && (  
-              <>  
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />  
-                <motion.div initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 overflow-hidden">  
-                  <button onClick={() => { setShowMenu(false); setNicknameTarget('friend'); setTempNickname(nicknames[friendId!] || ''); setShowNicknameModal(true); }} className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">  
-                    <Pencil className="w-4 h-4 text-orange-500" /> Set Nickname  
-                  </button>  
-                  <button onClick={() => { setShowMenu(false); navigate(`/profile/${friendId}`); }} className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">  
-                    <User className="w-4 h-4 text-orange-500" /> View Profile  
-                  </button>  
-                </motion.div>  
-              </>  
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -10 }} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 overflow-hidden">  
+                <button onClick={() => { setShowMenu(false); setNicknameTarget('friend'); setTempNickname(nicknames[friendId!] || ''); setShowNicknameModal(true); }} className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">  
+                  <Pencil className="w-4 h-4 text-orange-500" /> Set Nickname  
+                </button>  
+                <button onClick={() => { setShowMenu(false); navigate(`/profile/${friendId}`); }} className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">  
+                  <User className="w-4 h-4 text-orange-500" /> View Profile  
+                </button>  
+              </motion.div>  
             )}  
           </AnimatePresence>  
         </div>  
       </header>  
 
       {/* Messages Area */}  
-      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none p-4 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed opacity-90 pb-36">  
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none p-4 custom-scrollbar bg-transparent pb-36 relative z-10">  
         {messages.length === 0 ? (  
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">  
             <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">  
@@ -631,12 +653,12 @@ export default function Chat() {
                           <div className={`mb-1 relative group/media ${(!msg.text && msg.attachment.type !== 'file') ? '' : 'rounded-xl overflow-hidden'}`}>  
                             {msg.attachment.type === 'image' && (  
                               <div className="relative cursor-pointer overflow-hidden rounded-2xl" onClick={() => setPreviewMedia({url: msg.attachment.data, type: 'image', name: msg.attachment.name, id: msg.id})}>  
-                                <img src={msg.attachment.data} alt="attachment" className="max-w-full h-auto max-h-64 object-cover" />  
+                                <img src={msg.attachment.data || undefined} alt="attachment" className="max-w-full h-auto max-h-64 object-cover" />  
                               </div>  
                             )}  
                             {msg.attachment.type === 'video' && (  
                               <div className="relative cursor-pointer overflow-hidden rounded-2xl" onClick={() => setPreviewMedia({url: msg.attachment.data, type: 'video', name: msg.attachment.name, id: msg.id})}>  
-                                <video src={msg.attachment.data} className="max-w-full h-auto max-h-64 object-cover" />  
+                                <video src={msg.attachment.data || undefined} className="max-w-full h-auto max-h-64 object-cover" />  
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play className="w-10 h-10 text-white" /></div>  
                               </div>  
                             )}  
@@ -679,7 +701,7 @@ export default function Chat() {
               <button onClick={() => setPreviewMedia(null)} className="p-2 text-white bg-white/10 rounded-full"><ArrowLeft className="w-6 h-6" /></button>  
               <button onClick={() => handleDownload(previewMedia.url, previewMedia.name, previewMedia.id)} className="p-2 text-white bg-white/10 rounded-full"><Download className="w-6 h-6" /></button>  
             </div>  
-            {previewMedia.type === 'image' ? <img src={previewMedia.url} className="max-w-full max-h-full object-contain" /> : <video src={previewMedia.url} controls autoPlay className="max-w-full max-h-full object-contain" />}  
+            {previewMedia.type === 'image' ? <img src={previewMedia.url || undefined} className="max-w-full max-h-full object-contain" /> : <video src={previewMedia.url || undefined} controls autoPlay className="max-w-full max-h-full object-contain" />}  
           </motion.div>  
         )}  
       </AnimatePresence>  
@@ -702,7 +724,7 @@ export default function Chat() {
       </AnimatePresence>  
 
          {/* Reply/Attachment Banner & Input Container */}
-<div className="flex-shrink-0 w-full bg-[#FDFBF7] dark:bg-gray-900 z-40 relative">
+<div className="flex-shrink-0 w-full bg-transparent z-40 relative">
   <div className="w-full max-w-2xl max-w-[95%] mx-auto px-2 pb-4 relative">
 
     {/* Reply/Attachment Banner */}
@@ -794,7 +816,7 @@ export default function Chat() {
           accept="image/*,video/*,.pdf,.doc,.docx,.txt"
         />
 
-        <div className="w-full flex items-center bg-white dark:bg-gray-800 rounded-full pl-2 pr-1.5 py-1.5 shadow-2xl border border-gray-100 dark:border-gray-700 transition-all focus-within:border-orange-500/50">
+        <div className="w-full flex items-center bg-white/90 dark:bg-gray-800/95 backdrop-blur-md rounded-full pl-2 pr-1.5 py-2 shadow-2xl border border-gray-200/50 dark:border-gray-700/50 transition-all focus-within:ring-4 focus-within:ring-orange-500/10 focus-within:border-orange-500/80">
 
           {/* Attachment Button */}
           <button

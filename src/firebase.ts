@@ -1,6 +1,6 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, User, Auth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, Firestore } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, Firestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAnalytics, logEvent, Analytics } from 'firebase/analytics';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -25,7 +25,15 @@ export function getDb(): Firestore {
     const app = getFirebaseApp();
     const dbId = (firebaseConfig as any).firestoreDatabaseId || '(default)';
     console.log('Initializing Firestore with database ID:', dbId);
-    dbInstance = getFirestore(app, dbId);
+    
+    // Enable offline persistence for instant loading
+    if (typeof window !== 'undefined') {
+      dbInstance = initializeFirestore(app, {
+        localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+      }, dbId);
+    } else {
+      dbInstance = getFirestore(app, dbId);
+    }
   }
   return dbInstance;
 }

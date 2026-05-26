@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neurix-v1';
+const CACHE_NAME = 'naitix-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -50,12 +50,13 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || '✦ NEURIX AI', {
+    self.registration.showNotification(data.title || '✦ NAITIX AI', {
       body: data.body || '✦ Scheduled: Automated reminder is active.',
-      icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
-      badge: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
+      icon: '/Logo.png',
+      badge: '/Logo.png',
+      image: '/Logo.png',
       vibrate: [200, 100, 200, 100, 300],
-      tag: data.tag || 'neurix-reminder',
+      tag: data.tag || 'naitix-reminder',
       renotify: true,
       timestamp: Date.now(),
       requireInteraction: true,

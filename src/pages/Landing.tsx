@@ -60,7 +60,10 @@ export default function Landing() {
   ];
 
   return (
-    <div className="bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen font-sans transition-colors duration-300">
+    <div className="bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen font-sans transition-colors duration-300 relative overflow-x-hidden">
+      {/* Decorative Ambient Background Gradients */}
+      <div className="absolute top-0 right-0 w-[300px] h-[300px] sm:w-[550px] sm:h-[550px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.13)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+      <div className="absolute top-0 left-0 w-[200px] h-[200px] sm:w-[400px] sm:h-[400px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
       
       {/* Navigation */}
       <nav className="border-b border-orange-100/50 dark:border-gray-950 bg-[#FDFBF7]/80 dark:bg-gray-950/85 backdrop-blur-md sticky top-0 z-50">
@@ -68,12 +71,12 @@ export default function Landing() {
           <Link to="/" className="flex items-center gap-2 group">
             <img 
               src="/Logo.png" 
-              alt="NEURIX AI Logo" 
+              alt="NAITIX AI Logo" 
               className="w-9 h-9 rounded-xl object-contain shadow-sm shadow-orange-500/10 group-hover:scale-105 transition-all" 
               referrerPolicy="no-referrer"
             />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-              NEURIX AI
+              NAITIX AI
             </span>
           </Link>
 
@@ -204,7 +207,7 @@ export default function Landing() {
           </h1>
 
           <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            NEURIX AI fuses advanced neurological game design with real-time AI personality coaching. Train processing speed, maintain high-yield health routines, and scale your potential every single day.
+            NAITIX AI fuses advanced neurological game design with real-time AI personality coaching. Train processing speed, maintain high-yield health routines, and scale your potential every single day.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -352,17 +355,17 @@ export default function Landing() {
             <div className="flex items-center gap-2.5">
               <img 
                 src="/Logo.png" 
-                alt="NEURIX AI Logo" 
+                alt="NAITIX AI Logo" 
                 className="w-8 h-8 rounded-xl object-contain shadow-sm shadow-orange-500/10" 
                 referrerPolicy="no-referrer"
               />
-              <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">NEURIX AI</span>
+              <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">NAITIX AI</span>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed">
               Unlock supreme mental performance, manage daily habits, and train with an personalized artificial life coach.
             </p>
             <p className="text-xs text-gray-400">
-              © {new Date().getFullYear()} NEURIX AI. All rights reserved.
+              © {new Date().getFullYear()} NAITIX AI. All rights reserved.
             </p>
           </div>
 
@@ -401,7 +404,7 @@ export default function Landing() {
         {/* Bottom copyright & micro disclaimer */}
         <div className="border-t border-orange-100/30 dark:border-gray-900/50 py-6 text-center text-xs text-gray-400 dark:text-gray-500 max-w-7xl mx-auto px-6">
           <p>
-            Disclaimer: NEURIX AI is a cognitive training app. The brain exercises and AI coach suggestions are intended for productivity and self-growth enablement, not medical advice, counseling, or professional psychiatric evaluation.
+            Disclaimer: NAITIX AI is a cognitive training app. The brain exercises and AI coach suggestions are intended for productivity and self-growth enablement, not medical advice, counseling, or professional psychiatric evaluation.
           </p>
         </div>
       </footer>

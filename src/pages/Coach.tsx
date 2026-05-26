@@ -10,6 +10,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { generateLocalBackupResponse } from '../utils/localCoach';
 
 export default function Coach() {
   const { user, profile } = useAuth();
@@ -19,7 +20,7 @@ export default function Coach() {
 
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<{id: number, role: string, text: string, isError?: boolean, userMsg?: string}[]>([]);
+  const [messages, setMessages] = useState<{id: string, role: string, text: string, isError?: boolean, userMsg?: string}[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [liveText, setLiveText] = useState('User Experience (UX) design is the process of creating products, systems, or services that offer meaningful, efficient, and enjoyable experiences for users.');
@@ -31,11 +32,94 @@ export default function Coach() {
   const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // States for user's real-time app data to feed into Gemini models
+  const [habits, setHabits] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [gameSessions, setGameSessions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, `users/${user.uid}/habits`));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHabits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("Error fetching habits for AI: ", error));
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, `users/${user.uid}/reminders`));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setReminders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("Error fetching reminders for AI: ", error));
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, `users/${user.uid}/gameSessions`), orderBy('playedAt', 'desc'), limit(10));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setGameSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("Error fetching game sessions for AI: ", error));
+    return () => unsubscribe();
+  }, [user]);
+
+  const getAppRealtimeDataString = () => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const habitsDesc = habits.length > 0
+      ? habits.map(h => `- ${h.title}: Streak ${h.streak || 0} days, ${h.lastCompleted === todayStr ? 'Completed today' : 'Not completed today'}`).join('\n')
+      : 'No habits currently defined.';
+
+    const remindersDesc = reminders.length > 0
+      ? reminders.map(r => {
+          let timeVal = '';
+          if (r.time) {
+            if (r.time.toDate) {
+              timeVal = r.time.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            } else if (typeof r.time === 'string') {
+              timeVal = r.time;
+            } else if (r.time.seconds) {
+              timeVal = new Date(r.time.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            } else {
+              timeVal = String(r.time);
+            }
+          }
+          return `- ${r.title} at ${timeVal}`;
+        }).join('\n')
+      : 'No reminders set.';
+
+    const gamesDesc = gameSessions.length > 0
+      ? gameSessions.slice(0, 5).map(g => {
+          const dateVal = g.playedAt?.toDate ? g.playedAt.toDate().toLocaleDateString() : '';
+          return `- Played "${g.gameName || 'Brain Game'}" (Category: ${g.category}): Score ${g.score}, Earned ${g.xpEarned} XP ${dateVal ? `on ${dateVal}` : ''}`;
+        }).join('\n')
+      : 'No cognitive games played yet.';
+
+    return `
+=== NAITIX USER REAL-TIME SYSTEM DATA ===
+Current User Identity: Name: ${profile?.name || user?.displayName || 'User'}, Level: ${profile?.level || 1}, XP: ${profile?.xp || 0}, Current Streak: ${profile?.streak || 0} days, Life Score: ${profile?.lifeScore || 50}/100.
+
+USER DAILY ROUTINE / HABITS:
+${habitsDesc}
+
+USER REMINDERS SET:
+${remindersDesc}
+
+USER RECENT COGNITIVE TRAINING GAMES (Cognitive Modules):
+${gamesDesc}
+
+APPLICATION DETAILS (Naitix):
+- Name: Naitix
+- Purpose: Ultimate AI Life Coach, Productivity Companion, Habit Building, Cognitive Training with real-time analytics.
+- Core features: Daily routines & habits, brain gamified challenges, notifications/reminders, and deep coaching loops.
+==========================================`;
+  };
+
   const fetchWeather = async (force = false) => {
     if (!ai) return;
     if (!force) {
-      const cachedWeather = localStorage.getItem('neurix_weather');
-      const cachedTime = localStorage.getItem('neurix_weather_time');
+      const cachedWeather = localStorage.getItem('naitix_weather');
+      const cachedTime = localStorage.getItem('naitix_weather_time');
       const now = new Date().getTime();
       
       // Cache for 4 hours
@@ -82,8 +166,8 @@ export default function Coach() {
       
       setWeather(weatherText);
       setWeatherData(current);
-      localStorage.setItem('neurix_weather', weatherText);
-      localStorage.setItem('neurix_weather_time', new Date().getTime().toString());
+      localStorage.setItem('naitix_weather', weatherText);
+      localStorage.setItem('naitix_weather_time', new Date().getTime().toString());
     } catch (error: any) {
       console.error("Weather fetch error:", error);
       const errorMsg = error.message || String(error);
@@ -110,6 +194,7 @@ export default function Coach() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sessionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isStreamingRef = useRef<boolean>(false);
 
   // Fetch recent sessions (limit 2)
   useEffect(() => {
@@ -130,9 +215,11 @@ export default function Coach() {
     }
 
     setShowChat(true);
+    isStreamingRef.current = false;
     const q = query(collection(db, `users/${user.uid}/chatSessions/${sessionId}/messages`), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => ({ id: Date.now() + Math.random(), role: doc.data().role, text: doc.data().text })));
+      if (isStreamingRef.current) return;
+      setMessages(snapshot.docs.map(doc => ({ id: doc.id, role: doc.data().role, text: doc.data().text })));
     }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/chatSessions/${sessionId}/messages`));
 
     return () => unsubscribe();
@@ -190,6 +277,7 @@ export default function Coach() {
 
     setIsTyping(true);
     setShowChat(true);
+    isStreamingRef.current = true;
 
     const callWithRetry = async (fn: () => Promise<any>, retries = 2): Promise<any> => {
       try {
@@ -203,21 +291,29 @@ export default function Coach() {
       }
     };
 
-    // Add empty message for streaming
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: userMsg }, { id: Date.now() + 1, role: 'model', text: '' }]);
+    // Add empty message for streaming with stable temp IDs
+    setMessages(prev => [
+      ...prev, 
+      { id: 'temp-user-' + Date.now(), role: 'user', text: userMsg }, 
+      { id: 'temp-model-' + Date.now(), role: 'model', text: '' }
+    ]);
 
     try {
       const needsSearch = /weather|news|current|today|now|latest|price|stock/i.test(userMsg);
       
       const stream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         contents: userMsg,
         config: {
-          systemInstruction: `You are NEURIX, a supportive and intelligent AI life coach.
+          systemInstruction: `You are NAITIX, a supportive and intelligent AI life coach and mental fitness guide inside the Naitix application.
 The current date and time is ${new Date().toLocaleString()}.
-User Profile: ${JSON.stringify(profile)}
 Current Weather: ${weather || 'Unknown'}
-Keep responses concise, motivating, and helpful.
+
+Here is the real-time data of the user within Naitix:
+${getAppRealtimeDataString()}
+
+Use this information to provide personalized, precise coaching about their routines, habits, streaks, cognitive game performances, and reminders. If they ask about their progress, stats, or upcoming tasks, reference this real-time data directly.
+Keep responses concise, motivating, and highly helpful.
 IMPORTANT: You MUST reply in the language the user is using.
 If the user says "talk to me in Hindi" or similar, switch to Hindi.
 The current year is 2026.`,
@@ -230,11 +326,16 @@ The current year is 2026.`,
         fullResponse += chunk.text;
         setMessages(prev => {
           const newMessages = [...prev];
-          newMessages[newMessages.length - 1].text = fullResponse;
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1].text = fullResponse;
+          }
           return newMessages;
         });
       }
       
+      // Stop lock before writing to database, so that onSnapshot successfully receives client sync state
+      isStreamingRef.current = false;
+
       // Save model response
       await addDoc(collection(db, `users/${user.uid}/chatSessions/${currentSessionId}/messages`), {
         role: 'model',
@@ -250,23 +351,70 @@ The current year is 2026.`,
 
     } catch (error: any) {
       console.error("AI Coach error:", error);
-      const errorMsg = error.message || String(error);
-      let userFriendlyError = 'Sorry, I encountered an error.';
+      const errorMsg = (error.message || String(error)).toLowerCase();
       
-      if (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('invalid API key')) {
-        userFriendlyError = 'Error: Invalid API Key. Please verify your GEMINI_API_KEY in Netlify.';
-      } else if (errorMsg.includes('503') || errorMsg.includes('high demand')) {
-        userFriendlyError = 'The AI service is currently experiencing high demand. Please try sending your message again in a few seconds.';
-      } else if (errorMsg.includes('quota') || errorMsg.includes('429')) {
-        userFriendlyError = 'Error: API Quota exceeded. Please try again in a moment.';
-      } else if (errorMsg.includes('safety')) {
-        userFriendlyError = 'I cannot respond to that due to safety guidelines.';
+      // Check if this error is due to rate limits or quota issues or invalid keys
+      const isQuotaOrLimit = errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('limit') || errorMsg.includes('api_key_invalid') || errorMsg.includes('invalid api key');
+
+      if (isQuotaOrLimit) {
+        // Run our offline fallback!
+        const localCtx = {
+          profile: profile,
+          habits: habits,
+          reminders: reminders,
+          gameSessions: gameSessions,
+          weather: weather
+        };
+        const localResponse = generateLocalBackupResponse(userMsg, localCtx);
+
+        isStreamingRef.current = false;
+
+        // Update the last message in state
+        setMessages(prev => {
+          const newMessages = [...prev];
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1].text = localResponse;
+          }
+          return newMessages;
+        });
+
+        // Save local backup response to db so it is persisted
+        try {
+          await addDoc(collection(db, `users/${user.uid}/chatSessions/${currentSessionId}/messages`), {
+            role: 'model',
+            text: localResponse,
+            createdAt: serverTimestamp()
+          });
+
+          await updateDoc(doc(db, `users/${user.uid}/chatSessions`, currentSessionId), {
+            lastMessage: localResponse,
+            updatedAt: serverTimestamp()
+          });
+        } catch (dbErr) {
+          console.error("Error saving backup response to DB:", dbErr);
+        }
       } else {
-        userFriendlyError = `Error: ${errorMsg.slice(0, 100)}...`;
+        isStreamingRef.current = false;
+
+        // Standard error handling
+        let userFriendlyError = 'Sorry, I encountered an error.';
+        if (errorMsg.includes('safety')) {
+          userFriendlyError = 'I cannot respond to that due to safety guidelines.';
+        } else {
+          userFriendlyError = `Error: ${error.message || String(error)}`;
+        }
+
+        setMessages(prev => {
+          const newMessages = [...prev];
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1].text = userFriendlyError;
+            newMessages[newMessages.length - 1].isError = true;
+          }
+          return newMessages;
+        });
       }
-      
-      setMessages(prev => [...prev, { id: Date.now(), role: 'model', text: userFriendlyError, isError: true, userMsg: userMsg }]);
     } finally {
+      isStreamingRef.current = false;
       setIsTyping(false);
     }
   };
@@ -306,7 +454,7 @@ The current year is 2026.`,
       if (user) {
         const sessionRef = await addDoc(collection(db, `users/${user.uid}/chatSessions`), {
           uid: user.uid,
-          title: `Voice Session - ${format(new Date(), 'MMM d, HH:mm')}`,
+          title: `Voice Session - ${format(new Date(), 'MMM d, h:mm a')}`,
           lastMessage: 'Voice session started...',
           updatedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
@@ -444,7 +592,12 @@ The current year is 2026.`,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } },
           },
-          systemInstruction: `You are NEURIX, a supportive AI life coach. The current date and time is ${new Date().toLocaleString()}. Keep responses concise, motivating, and conversational. You are speaking directly to the user.
+          systemInstruction: `You are NAITIX, a supportive AI life coach and voice assistant inside the Naitix application. The current date and time is ${new Date().toLocaleString()}. You are speaking directly to the user via voice. Keep responses concise, conversational, and motivating.
+
+Here is the real-time application and user data:
+${getAppRealtimeDataString()}
+
+Use this data to answer questions about their routines, cognitive game scores, level, streaks, and focus times naturally. Keep voice responses short and energetic.
 IMPORTANT: You MUST reply in the language the user is using. If the user says "talk to me in Hindi" or similar, switch to Hindi.
 Current Language: ${i18n.language === 'hi' ? 'Hindi' : 'English'}.`,
         },
@@ -550,9 +703,15 @@ Current Language: ${i18n.language === 'hi' ? 'Hindi' : 'English'}.`,
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-lg' 
                   : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-lg border border-gray-100 dark:border-gray-700'
               } ${msg.isError ? 'border-red-200 bg-red-50' : ''}`}>
-                <p className="text-sm leading-relaxed">{msg.text}</p>
+                {msg.role === 'model' ? (
+                  <div className="markdown-body text-sm leading-relaxed max-w-full overflow-hidden">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                )}
                 <span className={`text-[10px] mt-2 block opacity-50 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
-                  {format(new Date(), 'HH:mm')}
+                  {format(new Date(), 'h:mm a')}
                 </span>
                 {msg.isError && (
                   <button onClick={() => handleSend(msg.userMsg)} className="flex items-center gap-1 mt-3 text-xs text-red-500 hover:underline font-medium">
@@ -816,7 +975,7 @@ Current Language: ${i18n.language === 'hi' ? 'Hindi' : 'English'}.`,
                 <X className="w-6 h-6" />
               </button>
               <div className="flex flex-col items-center">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold mb-1">NEURIX LIVE</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold mb-1">NAITIX LIVE</span>
                 <div className="flex items-center gap-2">
                   <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                   <span className="text-xs text-white/60 font-medium">{isRecording ? t('coach.online') : t('coach.offline')}</span>
@@ -882,7 +1041,7 @@ Current Language: ${i18n.language === 'hi' ? 'Hindi' : 'English'}.`,
                 animate={{ opacity: 1, y: 0 }}
                 className="max-w-md w-full"
               >
-                <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-bold mb-4">{isAiSpeaking ? 'NEURIX SPEAKING' : (isRecording ? 'LISTENING' : 'READY')}</p>
+                <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-bold mb-4">{isAiSpeaking ? 'NAITIX SPEAKING' : (isRecording ? 'LISTENING' : 'READY')}</p>
                 <div className="max-h-[30vh] overflow-y-auto px-4 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
                   <h2 className="text-xl md:text-2xl font-serif text-white leading-tight mb-4">
                     {liveText}

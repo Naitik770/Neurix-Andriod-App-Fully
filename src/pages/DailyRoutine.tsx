@@ -57,7 +57,7 @@ export default function DailyRoutine() {
       const habitRef = doc(db, `users/${user.uid}/habits`, habitId);
       const habit = habits.find(h => h.id === habitId);
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = today.toLocaleDateString('en-CA');
       
       if (habit?.lastCompleted === todayStr) {
         return; // Already completed today
@@ -65,7 +65,7 @@ export default function DailyRoutine() {
       
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
       const isCompletedYesterday = habit?.lastCompleted === yesterdayStr;
       const newStreak = isCompletedYesterday ? (habit?.streak || 0) + 1 : 1;
@@ -139,13 +139,16 @@ export default function DailyRoutine() {
     setShowAddModal(true);
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const completedToday = habits.filter(h => h.lastCompleted === todayStr).length;
   const totalTasks = habits.length;
   const completionRate = totalTasks > 0 ? Math.round((completedToday / totalTasks) * 100) : 0;
 
   return (
-    <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-950 pb-36 transition-colors duration-300 overflow-y-auto">
+    <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-950 pb-36 transition-colors duration-300 overflow-y-auto relative overflow-x-hidden">
+      {/* Decorative Ambient Background Gradients */}
+      <div className="absolute top-0 right-0 w-[240px] h-[240px] sm:w-[500px] sm:h-[500px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.14)_0%,rgba(251,191,36,0.08)_30%,rgba(251,146,60,0.02)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+      <div className="absolute top-0 left-0 w-[180px] h-[180px] sm:w-[350px] sm:h-[350px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.10)_0%,rgba(249,115,22,0.05)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
       {/* Premium Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>

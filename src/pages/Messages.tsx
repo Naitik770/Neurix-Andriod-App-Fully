@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, getAvatarUrl } from '../App';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, getDoc, where, getDocs, updateDoc } from 'firebase/firestore';
-import { ArrowLeft, Search, UserPlus, Check, X, MessageCircle, UserX, Clock, UserCheck, Users, Pin, PinOff, Trash2, UserMinus, Pencil, User, MoreVertical, BellOff, Bell } from 'lucide-react';
+import { ArrowLeft, Search, UserPlus, Check, X, MessageCircle, UserX, Clock, UserCheck, Users, Pin, PinOff, Trash2, UserMinus, Pencil, User, MoreVertical, BellOff, Bell, Filter } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,9 +13,9 @@ export default function Messages() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'add'>('friends');
   const [friends, setFriends] = useState<any[]>(() => {
     try {
-      const activeUid = sessionStorage.getItem('neurix_active_uid');
+      const activeUid = localStorage.getItem('naitix_active_uid');
       if (activeUid) {
-        const cached = sessionStorage.getItem(`neurix_friends_${activeUid}`);
+        const cached = localStorage.getItem(`naitix_friends_${activeUid}`);
         if (cached) return JSON.parse(cached);
       }
     } catch (e) {}
@@ -23,9 +23,9 @@ export default function Messages() {
   });
   const [chats, setChats] = useState<{ [key: string]: any }>(() => {
     try {
-      const activeUid = sessionStorage.getItem('neurix_active_uid');
+      const activeUid = localStorage.getItem('naitix_active_uid');
       if (activeUid) {
-        const cached = sessionStorage.getItem(`neurix_chats_${activeUid}`);
+        const cached = localStorage.getItem(`naitix_chats_${activeUid}`);
         if (cached) return JSON.parse(cached);
       }
     } catch (e) {}
@@ -38,12 +38,12 @@ export default function Messages() {
   useEffect(() => {
     if (user?.uid && restoredUidRef.current !== user.uid) {
       try {
-        sessionStorage.setItem('neurix_active_uid', user.uid);
-        const cachedFriends = sessionStorage.getItem(`neurix_friends_${user.uid}`);
+        localStorage.setItem('naitix_active_uid', user.uid);
+        const cachedFriends = localStorage.getItem(`naitix_friends_${user.uid}`);
         if (cachedFriends) {
           setFriends(JSON.parse(cachedFriends));
         }
-        const cachedChats = sessionStorage.getItem(`neurix_chats_${user.uid}`);
+        const cachedChats = localStorage.getItem(`naitix_chats_${user.uid}`);
         if (cachedChats) {
           setChats(JSON.parse(cachedChats));
         }
@@ -58,6 +58,7 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Options Menu & Modal State
   const [selectedFriendForMenu, setSelectedFriendForMenu] = useState<any>(null);
@@ -102,18 +103,18 @@ export default function Messages() {
 
       // 1. Prepare initial list instantly using cache + fallback placeholders
       const initialProfiles = friendIds.map((id) => {
-        const cached = sessionStorage.getItem(`neurix_profile_persist_${id}`);
+        const cached = localStorage.getItem(`naitix_profile_persist_${id}`);
         if (cached) {
           try {
             return { id, ...JSON.parse(cached) };
           } catch (e) {}
         }
-        return { id, username: "loading", name: "Friend", isOnline: false };
+        return { id, username: "", name: "Friend", isOnline: false };
       });
       
       setFriends(initialProfiles);
       try {
-        sessionStorage.setItem(`neurix_friends_${user.uid}`, JSON.stringify(initialProfiles));
+        localStorage.setItem(`naitix_friends_${user.uid}`, JSON.stringify(initialProfiles));
       } catch (e) {}
 
       // 2. Fetch missing or updated profiles asynchronously in the background
@@ -122,14 +123,14 @@ export default function Messages() {
           if (profileDoc.exists()) {
             const pData = profileDoc.data();
             try {
-              sessionStorage.setItem(`neurix_profile_persist_${id}`, JSON.stringify(pData));
+              localStorage.setItem(`naitix_profile_persist_${id}`, JSON.stringify(pData));
             } catch (err) {}
             
             // Incrementally update our state as soon as this profile arrives
             setFriends((prevFriends) => {
               const updated = prevFriends.map(f => f.id === id ? { id, ...pData } : f);
               try {
-                sessionStorage.setItem(`neurix_friends_${user.uid}`, JSON.stringify(updated));
+                localStorage.setItem(`naitix_friends_${user.uid}`, JSON.stringify(updated));
               } catch (e) {}
               return updated;
             });
@@ -151,13 +152,13 @@ export default function Messages() {
         const reqData = d.data();
         const fromUid = reqData.fromUid;
         let sProfile = null;
-        const cached = sessionStorage.getItem(`neurix_profile_persist_${fromUid}`);
+        const cached = localStorage.getItem(`naitix_profile_persist_${fromUid}`);
         if (cached) {
           try {
             sProfile = JSON.parse(cached);
           } catch (e) {}
         }
-        return { id: d.id, ...reqData, senderProfile: sProfile || { id: fromUid, name: "User", username: "loading" } };
+        return { id: d.id, ...reqData, senderProfile: sProfile || { id: fromUid, name: "User", username: "" } };
       });
 
       setRequests(initialReqs);
@@ -170,7 +171,7 @@ export default function Messages() {
           if (senderDoc.exists()) {
             const sProfile = senderDoc.data();
             try {
-              sessionStorage.setItem(`neurix_profile_persist_${fromUid}`, JSON.stringify(sProfile));
+              localStorage.setItem(`naitix_profile_persist_${fromUid}`, JSON.stringify(sProfile));
             } catch (err) {}
             setRequests((prevReqs) => 
               prevReqs.map(r => r.fromUid === fromUid ? { ...r, senderProfile: sProfile } : r)
@@ -198,7 +199,7 @@ export default function Messages() {
       });
       setChats(chatsMap);
       try {
-        sessionStorage.setItem(`neurix_chats_${user.uid}`, JSON.stringify(chatsMap));
+        localStorage.setItem(`naitix_chats_${user.uid}`, JSON.stringify(chatsMap));
       } catch (e) {}
     }, (error) => {
       console.error("Error fetching chats metadata:", error);
@@ -595,7 +596,7 @@ export default function Messages() {
     if (!date) return '';
     const today = new Date();
     if (date.toDateString() === today.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     }
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
@@ -642,83 +643,120 @@ export default function Messages() {
       return nameA.localeCompare(nameB);
     });
 
+  const totalUnreadCount = Object.values(chats).reduce((sum: number, chatData: any) => {
+    const nestedUnread = typeof chatData?.unreadCount === 'object' ? (chatData?.unreadCount?.[user?.uid || ''] || 0) : 0;
+    const flatUnread = chatData?.[`unreadCount.${user?.uid || ''}`] || 0;
+    return sum + Math.max(nestedUnread, flatUnread);
+  }, 0);
+
+  const hasNotificationsBadge = requests.length > 0 || totalUnreadCount > 0;
+
   return (
-    <div className="p-6 pt-12 min-h-screen bg-[#FDFBF7] dark:bg-gray-900 pb-32 transition-colors duration-300">
-      <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-orange-500" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Social</h1>
+    <div className="p-6 pt-12 min-h-screen bg-[#FAFAF8] dark:from-gray-950 dark:via-gray-900 dark:to-[#120D0A] pb-32 transition-colors duration-300 relative overflow-hidden">
+      {/* Subtle modern soft lighting overlay */}
+      <div className="absolute top-0 left-1/4 w-[350px] h-[350px] bg-orange-500/5 rounded-full filter blur-[120px] pointer-events-none z-0" />
+
+      {/* Aligned Premium Design Header */}
+      <header className="mb-8 relative z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="w-12 h-12 rounded-[20px] bg-white dark:bg-gray-800 flex items-center justify-center text-gray-800 dark:text-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/50 dark:border-gray-700/50 hover:scale-105 active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+            </button>
+            <div className="flex items-center gap-3">
+              {/* Premium Gradient Orange Social Users Icon */}
+              <Users className="w-8 h-8 text-[#FF7A00] stroke-[2.5]" />
+              <h1 className="text-[28px] font-bold text-gray-900 dark:text-white tracking-tight font-sans">Social</h1>
+            </div>
           </div>
         </div>
+        {/* Placements aligning right below title text (back arrow width 48px + gap 16px = 64px offset) */}
+        <p className="text-gray-400 dark:text-gray-500 text-[14px] font-medium pl-16 mt-1 tracking-wide">
+          Connect, chat and grow together.
+        </p>
       </header>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl">
-        {(['friends', 'requests', 'add'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative ${
-              activeTab === tab 
-                ? 'bg-white dark:bg-gray-700 text-orange-500 shadow-sm scale-[1.02]' 
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            {tab === 'friends' && `Friends`}
-            {tab === 'requests' && 'Requests'}
-            {tab === 'add' && 'Add'}
-            {tab === 'requests' && requests.length > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            )}
-          </button>
-        ))}
+      {/* Tabs - Styled precisely as inside the image container */}
+      <div className="grid grid-cols-3 mb-8 bg-white dark:bg-gray-850 p-2.5 rounded-[22px] relative z-10 shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-gray-100/40 dark:border-gray-800/20 backdrop-blur-md">
+        {(['friends', 'requests', 'add'] as const).map((tab, idx) => {
+          const isActive = activeTab === tab;
+          return (
+            <div key={tab} className="relative flex flex-col items-center">
+              <button
+                onClick={() => setActiveTab(tab)}
+                className={`w-full py-3.5 px-1 flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider relative ${
+                  isActive 
+                    ? 'text-[#FF7A00] font-extrabold' 
+                    : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'
+                }`}
+              >
+                {tab === 'friends' && <Users className="w-4.5 h-4.5 text-inherit stroke-[2]" />}
+                {tab === 'requests' && <Clock className="w-4.5 h-4.5 text-inherit stroke-[2]" />}
+                {tab === 'add' && <UserPlus className="w-4.5 h-4.5 text-inherit stroke-[2]" />}
+                
+                <span className="text-[11px] font-bold">
+                  {tab === 'friends' && 'Friends'}
+                  {tab === 'requests' && 'Requests'}
+                  {tab === 'add' && 'Add'}
+                </span>
+
+                {tab === 'requests' && requests.length > 0 && (
+                  <span className="absolute top-2 right-4 px-1.5 py-0.5 text-[8px] font-black bg-[#E11D48] text-white rounded-full leading-none">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Exact orange linear underline bar */}
+              {isActive && (
+                <motion.div 
+                  layoutId="activeTabUnderlineIndicator"
+                  className="absolute bottom-1 w-[80px] h-[3px] bg-[#FF7A00] rounded-full" 
+                />
+              )}
+
+              {/* Beautiful Segment Vertical Dividers */}
+              {idx < 2 && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-100 dark:bg-gray-800" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.2 }}
-          className="space-y-4"
+          className="space-y-4 relative z-10"
         >
           {activeTab === 'friends' && (
             <>
-              <div className="relative mb-6">
-                <input
-                  type="text"
-                  placeholder="Search friends..."
-                  value={friendsSearchQuery}
-                  onChange={(e) => setFriendsSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-gray-800 border-none rounded-2xl pl-12 pr-4 py-4 outline-none focus:ring-2 focus:ring-orange-500/50 transition-all text-gray-900 dark:text-white shadow-sm text-sm"
-                />
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                {friendsSearchQuery && (
-                  <button 
-                    onClick={() => setFriendsSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+              {/* All Friends Counting Header */}
+              <div className="flex items-center justify-between px-1.5 mt-4 mb-4 relative z-10">
+                <h2 className="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">All Friends</h2>
+                <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">
+                  {sortedFriends.length} {sortedFriends.length === 1 ? 'friend' : 'friends'}
+                </span>
               </div>
 
               {sortedFriends.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-100 dark:border-gray-700">
-                  <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <UserPlus className="w-8 h-8 text-orange-500 opacity-40" />
+                <div className="text-center py-20 bg-white dark:bg-gray-800/30 backdrop-blur-md rounded-3xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <div className="w-16 h-16 bg-orange-50 dark:bg-orange-950/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-orange-100/50 dark:border-orange-900/10">
+                    <UserPlus className="w-8 h-8 text-[#FF7A00] opacity-60" />
                   </div>
-                  <p className="text-gray-500 dark:text-gray-400 font-medium">
-                    {friendsSearchQuery ? 'No friends match your search' : 'No friends yet'}
+                  <p className="text-gray-500 dark:text-gray-400 font-bold text-sm">
+                    {friendsSearchQuery ? 'No conversations match' : 'No continuous chats yet'}
                   </p>
                   {!friendsSearchQuery && (
-                    <button onClick={() => setActiveTab('add')} className="mt-4 text-orange-500 text-sm font-bold hover:underline">Find people to follow</button>
+                    <button onClick={() => setActiveTab('add')} className="mt-4 text-[#FF7A00] text-xs font-black hover:underline tracking-wider uppercase">Find active people</button>
                   )}
                 </div>
               ) : (
@@ -740,108 +778,144 @@ export default function Messages() {
                       onMouseDown={(e) => handlePressStart(e, friend)}
                       onMouseUp={(e) => handlePressEnd(e, friend)}
                       onMouseLeave={handlePressCancel}
-                      className={`p-4 rounded-3xl shadow-sm flex items-center justify-between group hover:shadow-md transition-all border select-none cursor-pointer duration-300 ${
-                        isPinned 
-                          ? 'bg-orange-500/[0.03] border-orange-500/20 dark:bg-orange-500/[0.02] dark:border-orange-500/20' 
-                          : 'bg-white dark:bg-gray-800 border-transparent hover:border-orange-500/10'
+                      className={`p-5 rounded-[26px] bg-white dark:bg-gray-800 border border-gray-100/30 dark:border-gray-750/30 shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.035)] transition-all duration-300 flex items-center justify-between select-none cursor-pointer relative ${
+                        isPinned ? 'ring-1 ring-[#FF7A00]/10 bg-orange-500/[0.005]' : ''
                       }`}
                       style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
                     >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 overflow-hidden border border-orange-500/15 shadow-sm relative shrink-0">
-                          <img src={getAvatarUrl(friend)} alt="Avatar" className="w-full h-full object-cover" />
+                        {/* Circular Avatar exactly as requested (No heavy glow rings around, simple green dot indicator) */}
+                        <div className="relative shrink-0">
+                          <div className="w-[64px] h-[64px] rounded-full overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm bg-gray-50 dark:bg-gray-900">
+                            <img 
+                              src={getAvatarUrl(friend)} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          {friend.isOnline && (
+                            <span className="absolute bottom-[3px] right-[3px] w-3.5 h-3.5 bg-[#46C33E] border-2 border-white dark:border-gray-800 rounded-full flex items-center justify-center shadow-sm" />
+                          )}
                         </div>
+
+                        {/* Text Fields */}
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="font-extrabold text-gray-900 dark:text-white group-hover:text-orange-500 transition-colors truncate text-sm">
+                            <h3 className="font-bold text-gray-950 dark:text-white truncate text-[16px] leading-tight">
                               {friendNickname}
                             </h3>
                             {isPinned && (
-                              <span className="inline-flex items-center justify-center p-0.5 rounded-full bg-orange-500/10 text-orange-500">
-                                <Pin className="w-3 h-3 fill-orange-500" />
-                              </span>
+                              <Pin className="w-3.5 h-3.5 text-[#FF7A00] fill-[#FF7A00] opacity-80 shrink-0" />
                             )}
                             {chats[chatId]?.muted?.[user.uid] && (
-                              <span className="inline-flex items-center justify-center p-0.5 rounded-full bg-gray-500/10 text-gray-500">
-                                <BellOff className="w-3 h-3" />
-                              </span>
+                              <BellOff className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                             )}
                           </div>
                           
+                          {/* Messages text */}
                           {lastMsg ? (() => {
-                            const unreadCount = chatData?.unreadCount?.[user.uid] || 0;
+                            const nestedUnread = typeof chatData?.unreadCount === 'object' ? (chatData?.unreadCount?.[user.uid] || 0) : 0;
+                            const flatUnread = chatData?.[`unreadCount.${user.uid}`] || 0;
+                            const unreadCount = Math.max(nestedUnread, flatUnread);
                             const isUnread = unreadCount > 0;
                             
-                            // Truncate at around 15-19 words (using 17 words)
                             const words = lastMsg.split(/\s+/);
-                            const isTruncated = words.length > 17;
-                            const truncatedText = isTruncated ? words.slice(0, 17).join(' ') + '...' : lastMsg;
+                            const isTruncated = words.length > 14;
+                            const truncatedText = isTruncated ? words.slice(0, 14).join(' ') + '...' : lastMsg;
+
+                            const isMe = chatData?.lastMessageSenderId === user.uid;
+                            const displayMessageWithSender = isMe ? `You: ${truncatedText}` : truncatedText;
+
+                            let isWithin24Hours = false;
+                            if (lastMsgTime) {
+                              let timeMs = Date.now();
+                              if (typeof lastMsgTime === 'number') {
+                                timeMs = lastMsgTime;
+                              } else if (lastMsgTime instanceof Date) {
+                                timeMs = lastMsgTime.getTime();
+                              } else if (lastMsgTime.toMillis) {
+                                timeMs = lastMsgTime.toMillis();
+                              } else if (lastMsgTime.seconds) {
+                                timeMs = lastMsgTime.seconds * 1000;
+                              }
+                              
+                              isWithin24Hours = (Date.now() - timeMs) <= 24 * 60 * 60 * 1000;
+                            }
 
                             let displayMsg = '';
                             if (isUnread) {
                               if (unreadCount === 1) {
-                                displayMsg = truncatedText;
+                                displayMsg = displayMessageWithSender;
                               } else if (unreadCount > 1 && unreadCount <= 4) {
                                 displayMsg = `${unreadCount} new messages`;
                               } else {
                                 displayMsg = `4+ new messages`;
                               }
                             } else {
-                              displayMsg = truncatedText;
+                              if (isWithin24Hours) {
+                                displayMsg = displayMessageWithSender;
+                              } else {
+                                displayMsg = 'Tap to chat';
+                              }
                             }
 
                             return (
-                              <p className={`text-xs mt-0.5 max-w-[100%] leading-relaxed ${
+                              <p className={`text-[13px] mt-1.5 truncate ${
                                 isUnread 
-                                  ? 'font-bold text-gray-900 dark:text-white' 
-                                  : 'font-medium text-gray-500 dark:text-gray-400'
+                                  ? 'font-bold text-[#FF7A00] dark:text-orange-450' 
+                                  : 'font-medium text-gray-400 dark:text-gray-500'
                               }`}>
                                 {displayMsg}
                               </p>
                             );
                           })() : (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5 font-medium">@{friend.username}</p>
+                            <p className="text-[13px] text-gray-400 dark:text-gray-500 truncate mt-1.5 font-semibold">Tap to chat</p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
-                        {/* Rightmost column for timing indicator & secondary options */}
-                        <div className="flex flex-col items-end gap-1.5">
-                          {lastMsgTime && (
-                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider">
-                              {formatLastMsgTime(lastMsgTime)}
-                            </span>
-                          )}
+                      {/* Right Columns Aligned Perfectly with Timings on top & Squircle Action Buttons below */}
+                      <div className="flex flex-col items-end gap-3 shrink-0">
+                        {lastMsgTime && (
+                          <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                            {formatLastMsgTime(lastMsgTime)}
+                          </span>
+                        )}
+                        
+                        {/* Secondary Options and Notification Indicator Column */}
+                        <div className="flex items-center gap-2.5">
                           {(() => {
-                            const unreadCount = chatData?.unreadCount?.[user.uid] || 0;
+                            const nestedUnread = typeof chatData?.unreadCount === 'object' ? (chatData?.unreadCount?.[user.uid] || 0) : 0;
+                            const flatUnread = chatData?.[`unreadCount.${user.uid}`] || 0;
+                            const unreadCount = Math.max(nestedUnread, flatUnread);
                             return unreadCount > 0 ? (
-                              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-extrabold text-white shadow-sm ring-2 ring-white dark:ring-gray-800 animate-pulse">
+                              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-1.5 text-[9px] font-extrabold text-white shadow-sm ring-2 ring-white dark:ring-gray-850 animate-pulse shrink-0 mr-1">
                                 {unreadCount}
                               </span>
                             ) : null;
                           })()}
-                          <div className="flex items-center gap-1">
-                            {/* Tap here for instant Options Trigger (Accessible fallback for all browser habits) */}
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                setSelectedFriendForMenu(friend);
-                              }}
-                              className="w-8 h-8 rounded-lg bg-gray-100/50 hover:bg-orange-500/10 dark:bg-gray-700/50 hover:text-orange-500 dark:text-gray-400 transition-colors flex items-center justify-center cursor-pointer"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                            
-                            <Link 
-                              to={`/chat/${friend.id}`} 
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm group-hover:shadow-orange-500/20 cursor-pointer"
-                            >
-                              <MessageCircle className="w-5 h-5" />
-                            </Link>
-                          </div>
+
+                          {/* Squircle Action Button 1: Triple Dots Options trigger */}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setSelectedFriendForMenu(friend);
+                            }}
+                            className="w-[42px] h-[42px] rounded-[16px] bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-150/70 dark:border-gray-700/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)] text-gray-500 dark:text-gray-400 transition-all flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
+                          >
+                            <MoreVertical className="w-4.5 h-4.5 stroke-[2]" />
+                          </button>
+                          
+                          {/* Squircle Action Button 2: Message/Chat Box navigation */}
+                          <Link 
+                            to={`/chat/${friend.id}`} 
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-[42px] h-[42px] rounded-[16px] bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-150/70 dark:border-gray-700/60 shadow-[0_2px_8px_rgba(0,0,0,0.03)] flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                          >
+                            <MessageCircle className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 stroke-[2]" />
+                          </Link>
                         </div>
                       </div>
                     </div>

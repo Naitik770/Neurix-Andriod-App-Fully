@@ -109,7 +109,7 @@ export default function Personalization() {
               })()}
             </div>
             <h1 className="text-3xl font-serif text-gray-900 dark:text-white mb-2 transition-colors duration-300">{STEPS[step].title}</h1>
-            <p className="text-gray-500 dark:text-gray-400 transition-colors duration-300">Help NEURIX understand you better to provide personalized coaching.</p>
+            <p className="text-gray-500 dark:text-gray-400 transition-colors duration-300">Help NAITIX understand you better to provide personalized coaching.</p>
           </div>
 
           {step === 0 && (

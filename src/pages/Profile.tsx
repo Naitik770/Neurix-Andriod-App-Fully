@@ -33,7 +33,7 @@ export default function Profile() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>((window as any).pwaDeferredPrompt);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isDismissed, setIsDismissed] = useState(() => {
-    return localStorage.getItem('neurix_pwa_install_dismissed') === 'true';
+    return localStorage.getItem('naitix_pwa_install_dismissed') === 'true';
   });
   const [showGuide, setShowGuide] = useState(false);
   const [guideTab, setGuideTab] = useState<'ios' | 'android' | 'desktop'>(() => {
@@ -127,7 +127,7 @@ export default function Profile() {
   };
 
   const handleDismissCard = () => {
-    localStorage.setItem('neurix_pwa_install_dismissed', 'true');
+    localStorage.setItem('naitix_pwa_install_dismissed', 'true');
     setIsDismissed(true);
     toast.success('Recommendation dismissed. You can install anytime later.', { duration: 3000 });
   };
@@ -444,7 +444,7 @@ export default function Profile() {
                       >
                         <img
                           ref={imgRef}
-                          src={selectedFile}
+                          src={selectedFile || undefined}
                           onLoad={onImgLoad}
                           alt="Cropper Source"
                           className="absolute max-w-none origin-center pointer-events-none"
@@ -664,7 +664,7 @@ export default function Profile() {
                 <img 
                   referrerPolicy="no-referrer"
                   src="https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png" 
-                  alt="NEURIX Icon" 
+                  alt="NAITIX Icon" 
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -674,7 +674,7 @@ export default function Profile() {
             </div>
 
             <div className="text-left flex-1 min-w-0 pr-6">
-              <h4 className="text-base font-bold text-gray-900 dark:text-white truncate">Download NEURIX App</h4>
+              <h4 className="text-base font-bold text-gray-900 dark:text-white truncate">Download NAITIX App</h4>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                 Add to your home screen for a seamless full-screen layout. Keeps standard Chrome search/URL bars hidden!
               </p>
@@ -734,7 +734,7 @@ export default function Profile() {
                       <Smartphone className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">Install NEURIX Live</h3>
+                      <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">Install NAITIX Live</h3>
                       <p className="text-xs text-gray-550 dark:text-gray-400">Run naturally on your device screen</p>
                     </div>
                   </div>
@@ -784,7 +784,7 @@ export default function Profile() {
                       <div className="flex items-start gap-3">
                         <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
                         <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                          Open the <strong>Safari</strong> browser and navigate to the direct, un-sandboxed URL of NEURIX OS.
+                          Open the <strong>Safari</strong> browser and navigate to the direct, un-sandboxed URL of NAITIX OS.
                         </p>
                       </div>
                       <div className="flex items-start gap-3">
@@ -842,7 +842,7 @@ export default function Profile() {
                       <div className="flex items-start gap-3">
                         <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
                         <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                          Click on the <strong>Install / Download App icon</strong> (displays as a clean monitor with an arrow, or overlapping squares symbol) to mount NEURIX onto your local dock!
+                          Click on the <strong>Install / Download App icon</strong> (displays as a clean monitor with an arrow, or overlapping squares symbol) to mount NAITIX onto your local dock!
                         </p>
                       </div>
                     </div>

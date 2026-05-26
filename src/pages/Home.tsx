@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth, getAvatarUrl } from '../App';
 import { format, addDays, startOfWeek } from 'date-fns';
@@ -121,12 +121,14 @@ export default function Home() {
   const [newTaskDuration, setNewTaskDuration] = useState('');
   const [newTaskIcon, setNewTaskIcon] = useState('check');
   const [showReminder, setShowReminder] = useState(true);
+  const levelingRef = useRef(false);
 
   // Level Up Check
   useEffect(() => {
-    if (!profile?.xp || !user) return;
+    if (!profile?.xp || !user || levelingRef.current) return;
     const nextLevelXp = (profile.level || 1) * 100;
     if (profile.xp >= nextLevelXp) {
+      levelingRef.current = true;
       const upgradeLevel = async () => {
         try {
           await updateDoc(doc(db, `users/${user.uid}`), {
@@ -142,6 +144,8 @@ export default function Home() {
           });
         } catch (e) {
           console.error("Level up error", e);
+        } finally {
+          levelingRef.current = false;
         }
       };
       upgradeLevel();
@@ -243,7 +247,7 @@ export default function Home() {
     try {
       const habitRef = doc(db, `users/${user.uid}/habits`, habitId);
       const habit = habits.find(h => h.id === habitId);
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toLocaleDateString('en-CA');
       if (habit?.lastCompleted === todayStr) {
         return; // Already completed today
       }
@@ -434,7 +438,11 @@ export default function Home() {
   };
 
   return (
-    <div className="p-6 pt-12 min-h-screen relative bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 overflow-y-auto">
+    <div className="p-6 pt-12 min-h-screen relative bg-[#FDFBF7] dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 overflow-y-auto overflow-x-hidden">
+      {/* Decorative Ambient Background Gradients */}
+      <div className="absolute top-0 right-0 w-[280px] h-[280px] sm:w-[550px] sm:h-[550px] bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.15)_0%,rgba(251,191,36,0.09)_30%,rgba(251,146,60,0.03)_60%,transparent_80%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.08)_0%,rgba(251,191,36,0.04)_40%,transparent_75%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+      <div className="absolute top-0 left-0 w-[200px] h-[200px] sm:w-[400px] sm:h-[400px] bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12)_0%,rgba(249,115,22,0.06)_40%,transparent_70%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.04)_0%,transparent_60%)] pointer-events-none z-0 transition-opacity duration-500 transform-gpu" />
+
       {/* Focus Mode Overlay */}
       <AnimatePresence>
         {isFocusMode && activeTimerHabit && (
@@ -456,7 +464,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <header className="flex justify-between items-start mb-8">
+      <header className="flex justify-between items-start mb-8 relative z-10">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
@@ -592,7 +600,7 @@ export default function Home() {
           </div>
         ) : (
           habits.slice(0, 5).map((habit) => {
-            const isCompleted = habit.lastCompleted === new Date().toISOString().split('T')[0];
+            const isCompleted = habit.lastCompleted === new Date().toLocaleDateString('en-CA');
             return (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}

@@ -87,3 +87,52 @@
   @apply bg-gray-50/50;
 }
 
+/* Markdown Body Formatting inside Coach */
+.markdown-body h1 {
+  @apply text-xl font-bold mt-4 mb-2 text-gray-900 dark:text-white;
+}
+.markdown-body h2 {
+  @apply text-lg font-bold mt-3 mb-2 text-gray-900 dark:text-white;
+}
+.markdown-body h3 {
+  @apply text-base font-bold mt-3 mb-2 text-gray-900 dark:text-white;
+}
+.markdown-body p {
+  @apply mb-2 leading-relaxed text-sm;
+}
+.markdown-body ul {
+  @apply list-disc pl-5 mb-3 space-y-1 text-sm;
+}
+.markdown-body ol {
+  @apply list-decimal pl-5 mb-3 space-y-1 text-sm;
+}
+.markdown-body li {
+  @apply text-sm leading-relaxed;
+}
+.markdown-body strong {
+  @apply font-bold text-gray-900 dark:text-white;
+}
+.markdown-body blockquote {
+  @apply border-l-4 border-orange-500/50 pl-3 italic my-3 text-gray-600 dark:text-gray-300;
+}
+.markdown-body code {
+  @apply font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-orange-600 dark:text-orange-400;
+}
+
+/* Global Reset to prevent focus rings / outlines on Recharts and SVG chart elements when clicked */
+.recharts-wrapper:focus,
+.recharts-wrapper *:focus,
+.recharts-wrapper:focus-visible,
+.recharts-wrapper *:focus-visible,
+.recharts-wrapper:focus-within,
+.recharts-wrapper *:focus-within,
+.recharts-surface:focus,
+.recharts-surface *:focus,
+svg:focus,
+svg *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+

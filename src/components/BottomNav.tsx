@@ -30,9 +30,6 @@ export function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              {isActive && (
-                <div className="absolute -top-2 w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full -z-10 transition-colors duration-300" />
-              )}
               <Icon className={clsx('w-6 h-6 mb-1 transition-colors duration-300', isActive ? 'fill-orange-500 text-orange-500' : 'text-gray-400 dark:text-gray-500')} />
               <span className={clsx("text-[10px] font-medium transition-colors duration-300", isActive ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500')}>{label}</span>
             </>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import React, { useEffect, useState, createContext, useContext, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, onSnapshot, updateDoc, where, addDoc, increment } from 'firebase/firestore';
@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { BottomNav } from './components/BottomNav';
 import { format, isSameMinute } from 'date-fns';
 import { Toaster, toast } from 'sonner';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Notification Sound Player using Web Audio API (smooth chime)
 export const playNotificationSound = () => {
@@ -139,7 +140,7 @@ const showCustomToast = (message: any, type: 'success' | 'error' | 'info' | 'def
             <svg viewBox="0 0 24 24" className="w-[11px] h-[11px] text-white/90 fill-current shrink-0 animate-pulse" fill="currentColor">
               <path d="M12 2L14.85 9.15L22 12L14.85 14.85L12 22L9.15 14.85L2 12L9.15 9.15L12 2Z" />
             </svg>
-            <span className="text-white font-extrabold text-[11px] tracking-wider uppercase">NEURIX AI</span>
+            <span className="text-white font-extrabold text-[11px] tracking-wider uppercase">NAITIX AI</span>
           </div>
           <p className="text-white text-[13.5px] font-medium leading-normal tracking-wide">
             {displayMessage}
@@ -227,8 +228,41 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         // Use onSnapshot for real-time profile updates
         unsubscribeProfile = onSnapshot(userRef, async (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data());
+            const data = docSnap.data();
+            
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+            
+            let updatedStreak = data.streak || 0;
+            let updatedLastStreakUpdated = data.lastStreakUpdated;
+
+            if (data.lastStreakUpdated !== todayStr) {
+               if (data.lastStreakUpdated === yesterdayStr) {
+                 updatedStreak = (data.streak || 0) + 1;
+               } else {
+                 updatedStreak = 1;
+               }
+               updatedLastStreakUpdated = todayStr;
+               
+               updateDoc(userRef, { 
+                 streak: updatedStreak, 
+                 lastStreakUpdated: updatedLastStreakUpdated 
+               }).catch(e => console.warn(e));
+            }
+
+            data.streak = updatedStreak;
+            setProfile(data);
             setLoading(false);
+            
+            // Sync key stats to public profile for friends to see
+            updateDoc(doc(db, 'publicProfiles', firebaseUser.uid), {
+              xp: data.xp || 0,
+              level: data.level || 1,
+              streak: data.streak || 0,
+              lifeScore: data.lifeScore || 50,
+            }).catch(() => {});
           } else {
             setProfile(null);
             // If user is verified, createProfileIfMissing will handle loading state
@@ -316,6 +350,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             avatarSeed: name || 'Aneka',
             avatarStyle: 'avataaars',
             avatarColor: 'transparent',
+            xp: 0,
+            level: 1,
+            streak: 0,
+            lifeScore: 50,
             createdAt: serverTimestamp()
           }, { merge: true });
 
@@ -461,11 +499,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
               // 1. Browser Notification
               if ("Notification" in window) {
-                const title = `✦ NEURIX AI`;
+                const title = `✦ NAITIX AI`;
                 const options = {
-                  body: `✦ ${senderName}: ${chatData.lastMessage}\n\nTap to open chat in NEURIX OS`,
-                  icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
-                  badge: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
+                  body: `✦ ${senderName}: ${chatData.lastMessage}\n\nTap to open chat in NAITIX OS`,
+                  icon: '/Logo.png',
+                  badge: '/Logo.png',
+                  image: '/Logo.png',
                   tag: `msg-${friendId}`,
                   renotify: true,
                   vibrate: [100, 50, 100],
@@ -592,7 +631,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
               // 1. Try Browser Notification
             if ("Notification" in window && Notification.permission === 'granted') {
               try {
-                const title = `✦ NEURIX AI`; 
+                const title = `✦ NAITIX AI`; 
                 const formattedTime = format(reminderTime, 'hh:mm a');
                 const options = { 
                   body: `✦ Scheduled: ${reminder.title}${reminder.messageText ? `\n${reminder.messageText}` : ` (${formattedTime})`}`, 
@@ -661,7 +700,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             // 4. Fallback Alert
             if (!notified && window.location.pathname !== '/reminders') {
               setTimeout(() => {
-                alert(`⏰ NEURIX REMINDER: ${reminder.title}\n\n${reminder.messageText || "It's time for your scheduled task!"}`);
+                alert(`⏰ NAITIX REMINDER: ${reminder.title}\n\n${reminder.messageText || "It's time for your scheduled task!"}`);
               }, 1000);
               notified = true;
             } else if (!notified) {
@@ -747,23 +786,63 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function Layout({ children }: { children: React.ReactNode }) {
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+}
+
+function MainLayout({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
   const isChatPage = location.pathname.startsWith('/chat/');
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <div className={`${isChatPage ? 'h-screen h-[100dvh] overflow-hidden' : 'min-h-screen min-h-[100dvh]'} bg-[#FDFBF7] dark:bg-gray-900 ${isChatPage ? '' : 'pb-24'} font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300 relative`}>
-      <div className={`relative z-10 ${isChatPage ? 'h-full' : ''}`}>
-        {children}
-      </div>
+      <motion.div 
+        key={location.pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: [0.215, 0.610, 0.355, 1.000] }}
+        className={`relative z-10 ${isChatPage ? 'h-full' : ''}`}
+      >
+        {children || <Outlet />}
+      </motion.div>
       {!isChatPage && <BottomNav />}
     </div>
   );
 }
 
+function PageWrapper({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <motion.div 
+      key={location.pathname}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: [0.215, 0.610, 0.355, 1.000] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function RootRoute() {
   const { user, loading } = useAuth();
-
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#FDFBF7] dark:bg-gray-900 transition-colors duration-300">
@@ -774,52 +853,66 @@ function RootRoute() {
       </div>
     );
   }
-
   if (user) {
     return (
       <ProtectedRoute>
-        <Layout>
+        <MainLayout>
           <Home />
-        </Layout>
+        </MainLayout>
       </ProtectedRoute>
     );
   }
-
   return <Landing />;
 }
 
-export default function App() {
+function AppRoutes() {
+  const { user } = useAuth();
+
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/welcome" element={<Landing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsConditions />} />
-            <Route path="/create-username" element={<ProtectedRoute><CreateUsername /></ProtectedRoute>} />
-            <Route path="/personalization" element={<ProtectedRoute><Personalization /></ProtectedRoute>} />
-            <Route path="/" element={<RootRoute />} />
-            <Route path="/coach" element={<ProtectedRoute><Layout><Coach /></Layout></ProtectedRoute>} />
-            <Route path="/chat-history" element={<ProtectedRoute><Layout><ChatHistory /></Layout></ProtectedRoute>} />
-            <Route path="/games" element={<ProtectedRoute><Layout><Games /></Layout></ProtectedRoute>} />
-            <Route path="/analytics" element={<ProtectedRoute><Layout><Analytics /></Layout></ProtectedRoute>} />
-            <Route path="/daily-routine" element={<ProtectedRoute><Layout><DailyRoutine /></Layout></ProtectedRoute>} />
-            <Route path="/reminders" element={<ProtectedRoute><Layout><Reminders /></Layout></ProtectedRoute>} />
-            <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
-            <Route path="/chat/:friendId" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
-            <Route path="/profile/:userId" element={<ProtectedRoute><Layout><FriendProfile /></Layout></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </ErrorBoundary>
+    <Routes>
+      <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+      <Route path="/signup" element={<PageWrapper><SignUp /></PageWrapper>} />
+      <Route path="/forgot-password" element={<PageWrapper><ForgotPassword /></PageWrapper>} />
+      <Route path="/verify-email" element={<PageWrapper><VerifyEmail /></PageWrapper>} />
+      <Route path="/welcome" element={<PageWrapper><Landing /></PageWrapper>} />
+      <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
+      <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
+      <Route path="/privacy-policy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
+      <Route path="/terms" element={<PageWrapper><TermsConditions /></PageWrapper>} />
+      <Route path="/create-username" element={<ProtectedRoute><PageWrapper><CreateUsername /></PageWrapper></ProtectedRoute>} />
+      <Route path="/personalization" element={<ProtectedRoute><PageWrapper><Personalization /></PageWrapper></ProtectedRoute>} />
+      
+      {user ? (
+        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route path="/" element={<Home />} />
+          <Route path="/coach" element={<Coach />} />
+          <Route path="/chat-history" element={<ChatHistory />} />
+          <Route path="/games" element={<Games />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/daily-routine" element={<DailyRoutine />} />
+          <Route path="/reminders" element={<Reminders />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/chat/:friendId" element={<Chat />} />
+          <Route path="/profile/:userId" element={<FriendProfile />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+      ) : (
+        <>
+          <Route path="/" element={<RootRoute />} />
+          <Route path="/coach" element={<ProtectedRoute><MainLayout><Coach /></MainLayout></ProtectedRoute>} />
+          <Route path="/chat-history" element={<ProtectedRoute><MainLayout><ChatHistory /></MainLayout></ProtectedRoute>} />
+          <Route path="/games" element={<ProtectedRoute><MainLayout><Games /></MainLayout></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><MainLayout><Analytics /></MainLayout></ProtectedRoute>} />
+          <Route path="/daily-routine" element={<ProtectedRoute><MainLayout><DailyRoutine /></MainLayout></ProtectedRoute>} />
+          <Route path="/reminders" element={<ProtectedRoute><MainLayout><Reminders /></MainLayout></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><MainLayout><Messages /></MainLayout></ProtectedRoute>} />
+          <Route path="/chat/:friendId" element={<ProtectedRoute><MainLayout><Chat /></MainLayout></ProtectedRoute>} />
+          <Route path="/profile/:userId" element={<ProtectedRoute><MainLayout><FriendProfile /></MainLayout></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><MainLayout><Profile /></MainLayout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+        </>
+      )}
+    </Routes>
   );
 }
