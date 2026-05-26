@@ -50,8 +50,8 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || '✦ NAITIX AI', {
-      body: data.body || '✦ Scheduled: Automated reminder is active.',
+    self.registration.showNotification(data.title || '✦ NAITIX', {
+      body: data.body || '⟩» Scheduled: Automated reminder is active.',
       icon: '/Logo.png',
       badge: '/Logo.png',
       image: '/Logo.png',
