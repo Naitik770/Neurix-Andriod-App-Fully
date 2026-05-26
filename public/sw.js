@@ -54,7 +54,6 @@ self.addEventListener('push', (event) => {
       body: data.body || '⟩» Scheduled: Automated reminder is active.',
       icon: '/Logo.png',
       badge: '/Logo.png',
-      image: '/Logo.png',
       vibrate: [200, 100, 200, 100, 300],
       tag: data.tag || 'naitix-reminder',
       renotify: true,
