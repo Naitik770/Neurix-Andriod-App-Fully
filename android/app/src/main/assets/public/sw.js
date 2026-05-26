@@ -3,13 +3,22 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico'
+  '/Logo.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Use map with try/catch block or promise tracking so a single failure (like missing files or offline) doesn't abort installation
+      return Promise.all(
+        ASSETS_TO_CACHE.map(async (url) => {
+          try {
+            await cache.add(url);
+          } catch (err) {
+            console.warn(`[Service Worker] Failed to cache: ${url}`, err);
+          }
+        })
+      );
     })
   );
   self.skipWaiting();
@@ -41,27 +50,49 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || '⏰ NAITIX Reminder', {
-      body: 'NAITIX: Scheduled Task',
-      icon: 'https://picsum.photos/seed/naitix/192/192',
-      badge: 'https://picsum.photos/seed/naitix/192/192',
-      vibrate: [200, 100, 200],
+    self.registration.showNotification(data.title || '✦ NAITIX', {
+      body: data.body || '⟩» Scheduled: Automated reminder is active.',
+      icon: '/Logo.png',
+      badge: '/Logo.png',
+      image: '/Logo.png',
+      vibrate: [200, 100, 200, 100, 300],
       tag: data.tag || 'naitix-reminder',
       renotify: true,
       timestamp: Date.now(),
-      requireInteraction: true
+      requireInteraction: true,
+      data: { url: data.url || '/reminders' }
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+  
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Find a client with same origin
+      const matchingClient = clientList.find(c => {
+        try {
+          return new URL(c.url).origin === self.location.origin;
+        } catch(e) {
+          return false;
+        }
+      });
+      
+      if (matchingClient) {
+        if ('focus' in matchingClient) {
+          matchingClient.focus();
+        }
+        if ('navigate' in matchingClient && targetUrl !== '/') {
+          matchingClient.navigate(targetUrl);
+        }
+        return;
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });
