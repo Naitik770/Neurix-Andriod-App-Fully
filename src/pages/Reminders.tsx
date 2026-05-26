@@ -194,7 +194,7 @@ export default function Reminders() {
       if (permission === "granted") {
         const title = "✦ NAITIX AI";
         const options = { 
-          body: "✦ Scheduled: System automated reminders are fully operational.",
+          body: "»⟩ Scheduled: System automated reminders are fully operational.",
           icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
           badge: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
           vibrate: [200, 100, 200, 100, 300],
