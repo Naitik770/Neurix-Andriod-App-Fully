@@ -501,7 +501,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
               if ("Notification" in window) {
                 const title = `✦ NAITIX AI`;
                 const options = {
-                  body: `✦ ${senderName}: ${chatData.lastMessage}\n\nTap to open chat in NAITIX OS`,
+                  body: `•⟩ ${senderName}: ${chatData.lastMessage}\n\nTap to open chat in NAITIX OS`,
                   icon: '/Logo.png',
                   badge: '/Logo.png',
                   image: '/Logo.png',
@@ -634,9 +634,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
                 const title = `✦ NAITIX AI`; 
                 const formattedTime = format(reminderTime, 'hh:mm a');
                 const options = { 
-                  body: `✦ Scheduled: ${reminder.title}${reminder.messageText ? `\n${reminder.messageText}` : ` (${formattedTime})`}`, 
-                  icon: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
-                  badge: 'https://i.postimg.cc/FHPqp5Sd/N-20260520-182103-0000.png',
+                  body: `•⟩ Scheduled: ${reminder.title}${reminder.messageText ? `\n${reminder.messageText}` : ` (${formattedTime})`}`, 
+                  icon: '/Logo.png',
                   vibrate: [200, 100, 200, 100, 300],
                   tag: `reminder-${reminder.id}-${todayStr}`,
                   renotify: true,
@@ -700,7 +699,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             // 4. Fallback Alert
             if (!notified && window.location.pathname !== '/reminders') {
               setTimeout(() => {
-                alert(`⏰ NAITIX REMINDER: ${reminder.title}\n\n${reminder.messageText || "It's time for your scheduled task!"}`);
+                alert(`✦ NAITIX REMINDER: ${reminder.title}\n\n${reminder.messageText || "It's time for your scheduled task!"}`);
               }, 1000);
               notified = true;
             } else if (!notified) {
